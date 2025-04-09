@@ -1,9 +1,9 @@
 # app/agent/graph.py
 import logging
-from typing import TypedDict, Annotated, List, Dict, Any, Optional, Sequence
+from typing import TypedDict, Annotated, List, Dict, Any, Optional, Sequence, NotRequired
 import operator
 
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
 from langchain_core.pydantic_v1 import BaseModel, Field
@@ -18,15 +18,16 @@ class AgentState(TypedDict):
     """Represents the state of our agent graph."""
     query: str                               # The user's input query
     messages: Annotated[Sequence[BaseMessage], operator.add] # Accumulates message history
-    # context: Optional[List[Dict[str, Any]]] = None  # Raw retrieved context (optional if storing in messages)
-    answer: Optional[str] = None             # The final generated answer
+    # context: NotRequired[List[Dict[str, Any]]]  # Raw retrieved context (optional if storing in messages)
+    answer: NotRequired[str]             # The final generated answer
     # Intermediate scratchpad fields if needed for complex reasoning (not used in this simple graph yet)
-    # search_queries: Optional[List[str]] = None
+    # search_queries: NotRequired[List[str]]
+    error: NotRequired[str]              # Error message if something went wrong
 
 
 # --- LLM Definition ---
-# Use a model that supports tool calling
-llm = ChatOpenAI(model=settings.openai_llm_model, temperature=0)
+# Use a model that supports tool calling with streaming enabled
+llm = ChatOpenAI(model=settings.openai_llm_model, temperature=0, streaming=True)
 # Bind the tools to the LLM instance
 llm_with_tools = llm.bind_tools(available_tools)
 
@@ -36,6 +37,54 @@ llm_with_tools = llm.bind_tools(available_tools)
 async def call_model(state: AgentState):
     """Invokes the LLM with the current messages and tools."""
     logger.debug(f"Calling LLM. Current messages: {state['messages']}")
+    
+    # If this is the first call and it's a high-level query, add a hint to use appropriate tools
+    if len(state["messages"]) == 3:  # Only the system message, optional history, and user query
+        query = state["query"].lower()
+        
+        # Check if this is a query about project structure or services
+        is_project_structure_query = any(term in query for term in [
+            "overview", "about", "what is", "purpose", "high-level", "features", 
+            "how many", "architecture", "summary", "microservices", "services"
+        ])
+        
+        # Check for graph structure questions
+        is_graph_structure_query = any(term in query for term in [
+            "relationship", "connected", "depends on", "structure", "relationship", 
+            "organization", "architecture", "graph", "dependency"
+        ])
+        
+        if is_graph_structure_query:
+            # Recommend the KnowledgeGraph tool for graph relationship queries
+            hint_message = SystemMessage(content=(
+                "IMPORTANT: This appears to be a question about code relationships or project structure. "
+                "You should use the KnowledgeGraph tool FIRST to analyze structural relationships in the code, "
+                "then use the CodeBaseRetriever for additional details. The KnowledgeGraph tool "
+                "provides insights based on graph relationships rather than just text similarity."
+            ))
+            state["messages"].append(hint_message)
+            logger.info("Added KnowledgeGraph tool hint for structural query")
+        elif is_project_structure_query:
+            # For specific counts or service questions, suggest ProjectInfo tool
+            if any(term in query for term in ["how many", "microservice", "service"]):
+                hint_message = SystemMessage(content=(
+                    "IMPORTANT: This appears to be a question about the project's services or microservices. "
+                    "You should use the ProjectInfo tool FIRST to get information about the services, "
+                    "then use the KnowledgeGraph tool with query_type='services' to analyze service relationships, "
+                    "and finally use the CodeBaseRetriever if you need additional details."
+                ))
+            else:
+                # For general project questions, suggest CodeBaseRetriever first, then ProjectInfo
+                hint_message = SystemMessage(content=(
+                    "IMPORTANT: This appears to be a high-level question about the project. "
+                    "You should use the CodeBaseRetriever tool FIRST to gather detailed information, "
+                    "and then consider using the ProjectInfo tool to get high-level information. "
+                    "Combine both sources to provide a comprehensive answer and highlight any inconsistencies."
+                ))
+                
+            state["messages"].append(hint_message)
+            logger.info("Added tool hint for high-level query")
+    
     response = await llm_with_tools.ainvoke(state["messages"])
     logger.debug(f"LLM Response: {response}")
     # The response will be an AIMessage possibly containing tool_calls

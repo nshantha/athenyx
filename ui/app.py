@@ -4,6 +4,10 @@ import requests # Simple library for making HTTP requests
 import os
 from dotenv import load_dotenv
 import logging # Import standard logging
+import uuid
+from datetime import datetime
+import json
+import re
 
 # Configure logging for the UI app
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -24,55 +28,97 @@ st.set_page_config(page_title="AI Knowledge Graph Q&A", layout="wide")
 st.title("AI Knowledge Graph Q&A 💬")
 st.caption("Ask questions about the indexed software project.")
 
-# Input field for the user query
-user_query = st.text_input("Enter your question:", placeholder="e.g., What does the Email Service do?", key="query_input")
+# Initialize session state for chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Submit button
-submit_button = st.button("Ask AI Assistant", type="primary")
+if "conversation_id" not in st.session_state:
+    st.session_state.conversation_id = str(uuid.uuid4())
+
+# Helper function to format markdown - simplified version
+def format_markdown(text):
+    """Simple formatting to ensure markdown renders correctly"""
+    # Clean up the text
+    text = text.strip()
+    
+    # Ensure code blocks are properly formatted
+    text = re.sub(r'```(\w+)\s+', r'```\1\n', text)  # Fix language markers
+    text = re.sub(r'\n\s*```', '\n```', text)  # Fix closing code blocks
+    
+    return text
+
+# Display chat history
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Chat input
+user_query = st.chat_input("Ask a question about the project...")
 
 # --- Logic for Handling Query ---
 
-if submit_button and user_query:
-    logger.info(f"UI received query: '{user_query}'")
-    # Show a spinner while waiting for the backend response
-    with st.spinner("Thinking... 🤔"):
+if user_query:
+    # Add user message to chat history
+    st.session_state.messages.append({"role": "user", "content": user_query})
+    
+    # Display user message
+    with st.chat_message("user"):
+        st.markdown(user_query)
+    
+    # Display assistant response with a spinner
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+        
         try:
-            # Prepare the request payload
-            payload = {"query": user_query}
-            headers = {"Content-Type": "application/json", "Accept": "application/json"}
-
-            logger.info(f"Sending request to backend: {QUERY_ENDPOINT}")
-            # Make the POST request to the backend API
-            response = requests.post(QUERY_ENDPOINT, json=payload, headers=headers, timeout=300) # Add timeout (e.g., 5 mins)
-
-            # Check if the request was successful
-            response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
-
-            # Parse the JSON response
-            response_data = response.json()
-            logger.info(f"Received response from backend: {response_data.get('answer', 'No answer found')[:100]}...") # Log snippet
-
-            # Display the answer
-            st.subheader("Answer:")
-            st.markdown(response_data.get("answer", "Sorry, I couldn't generate an answer."))
-
-            # Display any error message returned by the agent/backend
-            if response_data.get("error"):
-                st.error(f"Backend Error: {response_data['error']}")
-
-            # TODO (Post-MVP): Display retrieved context if available and desired
-            # if response_data.get("retrieved_context"):
-            #     st.subheader("Retrieved Context:")
-            #     for chunk in response_data["retrieved_context"]:
-            #         # Format context display nicely
-            #         st.text_area(label=f"Source: {chunk.get('path', 'N/A')}", value=chunk.get('text', ''), height=100, disabled=True)
+            logger.info(f"UI received query: '{user_query}'")
+            
+            # Prepare conversation history
+            conversation_history = ""
+            if len(st.session_state.messages) > 1:
+                for msg in st.session_state.messages[:-1]:
+                    prefix = "User: " if msg["role"] == "user" else "Assistant: "
+                    conversation_history += prefix + msg["content"] + "\n\n"
+            
+            # Prepare request payload
+            payload = {
+                "query": user_query,
+                "conversation_history": conversation_history if conversation_history else None
+            }
+            headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
+            
+            # Stream the response
+            with requests.post(QUERY_ENDPOINT, json=payload, headers=headers, stream=True) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if line:
+                        line = line.decode('utf-8')
+                        if line.startswith('data: '):
+                            chunk = line[6:]  # Remove 'data: ' prefix
+                            # Unescape newlines that were escaped for SSE format
+                            chunk = chunk.replace('\\n', '\n').replace('\\"', '"')
+                            full_response += chunk
+                            message_placeholder.markdown(full_response + "▌")
+            
+            # Final update without cursor
+            message_placeholder.markdown(full_response)
+            
+            # Add to chat history
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
 
         except requests.exceptions.RequestException as req_err:
             logger.error(f"HTTP Request failed: {req_err}", exc_info=True)
-            st.error(f"⚠️ Connection Error: Could not reach the backend API at {QUERY_ENDPOINT}. Is it running?")
+            error_message = f"⚠️ Connection Error: Could not reach the backend API at {QUERY_ENDPOINT}. Is it running?"
+            message_placeholder.error(error_message)
+            st.session_state.messages.append({"role": "assistant", "content": error_message})
         except Exception as e:
             logger.error(f"An error occurred in the UI: {e}", exc_info=True)
-            st.error("An unexpected error occurred while processing your request.")
+            error_message = "An unexpected error occurred while processing your request."
+            message_placeholder.error(error_message)
+            st.session_state.messages.append({"role": "assistant", "content": error_message})
 
-elif submit_button and not user_query:
-    st.warning("Please enter a question.")
+# Add a button to clear chat history
+if st.sidebar.button("New Chat"):
+    st.session_state.messages = []
+    st.session_state.conversation_id = str(uuid.uuid4())
+    st.rerun()

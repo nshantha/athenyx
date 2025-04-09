@@ -1,22 +1,24 @@
 # app/schemas/models.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 
 class QueryRequest(BaseModel):
-    """Request model for querying the knowledge graph."""
+    """Model for user query requests to the agent."""
     query: str
+    conversation_history: Optional[str] = None
     user_id: Optional[str] = None # Example: For potential future context/personalization
 
 class ChunkResult(BaseModel):
-    """Represents a retrieved context chunk."""
+    """Model for a single context chunk result."""
     text: str
-    path: Optional[str] = None
+    path: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     start_line: Optional[int] = None
     score: Optional[float] = None
     # Add other metadata if needed
 
 class QueryResponse(BaseModel):
-    """Response model containing the answer and potentially context."""
+    """Model for agent responses to user queries."""
     answer: str
-    retrieved_context: Optional[List[ChunkResult]] = None # Context used for the answer
-    error: Optional[str] = None # Include if an error occurred
+    retrieved_context: Optional[List[ChunkResult]] = None
+    error: Optional[str] = None

@@ -185,6 +185,237 @@ class Neo4jManager:
             logger.error(f"Error during vector search: {e}", exc_info=True)
             return []
 
+    async def query_high_level_info(self, topic: str, skip_faq: bool = False) -> List[Dict[str, Any]]:
+        """
+        Performs a specialized graph query to fetch high-level information directly from the database.
+        
+        Args:
+            topic: The specific topic to query (e.g., "microservices", "architecture")
+            skip_faq: Deprecated parameter, kept for backwards compatibility
+            
+        Returns:
+            List of result dictionaries with text and path information
+        """
+        logger.info(f"Performing specialized high-level query for topic: {topic}")
+        
+        # No FAQ system - always query the database directly
+        
+        # Customize query based on topic
+        if topic == "microservices" or topic == "services":
+            # Query to find information about microservices or services
+            # Prioritize chunks from README files and those with service descriptions
+            query = """
+            MATCH (cc:CodeChunk)
+            WHERE (
+                cc.text CONTAINS 'service' OR 
+                cc.text CONTAINS 'microservice' OR
+                cc.text CONTAINS 'architecture'
+            )
+            RETURN 
+                cc.text AS text, 
+                cc.path AS path, 
+                cc.start_line AS start_line,
+                CASE 
+                    WHEN cc.path CONTAINS 'README.md' THEN 2.0
+                    WHEN cc.path CONTAINS '/docs/' THEN 1.5
+                    ELSE 1.0
+                END AS priority
+            ORDER BY priority DESC
+            LIMIT 15
+            """
+        elif topic == "architecture" or topic == "structure":
+            # Query focused on architecture information
+            query = """
+            MATCH (cc:CodeChunk)
+            WHERE (
+                cc.text CONTAINS 'architect' OR 
+                cc.text CONTAINS 'structure' OR
+                cc.text CONTAINS 'diagram' OR
+                cc.text CONTAINS 'workflow' OR
+                cc.text CONTAINS 'design'
+            )
+            RETURN 
+                cc.text AS text, 
+                cc.path AS path, 
+                cc.start_line AS start_line,
+                CASE 
+                    WHEN cc.path CONTAINS 'README.md' THEN 2.0
+                    WHEN cc.path CONTAINS '/docs/' THEN 1.5
+                    ELSE 1.0
+                END AS priority
+            ORDER BY priority DESC
+            LIMIT 15
+            """
+        elif topic == "overview" or topic == "about":
+            # General project overview information
+            query = """
+            MATCH (cc:CodeChunk)
+            WHERE (
+                cc.path CONTAINS 'README.md' OR 
+                cc.path CONTAINS '/docs/' OR
+                cc.path ENDS WITH '.md'
+            )
+            RETURN 
+                cc.text AS text, 
+                cc.path AS path, 
+                cc.start_line AS start_line,
+                CASE 
+                    WHEN cc.path CONTAINS 'README.md' THEN 2.0
+                    WHEN cc.path CONTAINS '/docs/' THEN 1.5
+                    ELSE 1.0
+                END AS priority
+            ORDER BY priority DESC
+            LIMIT 10
+            """
+        else:
+            # Generic topic search
+            # Create a parameterized query that searches for the topic keyword
+            query = """
+            MATCH (cc:CodeChunk)
+            WHERE 
+                cc.text CONTAINS $topic
+            RETURN 
+                cc.text AS text, 
+                cc.path AS path, 
+                cc.start_line AS start_line,
+                CASE 
+                    WHEN cc.path CONTAINS 'README.md' THEN 2.0
+                    WHEN cc.path CONTAINS '/docs/' THEN 1.5
+                    ELSE 1.0
+                END AS priority
+            ORDER BY priority DESC
+            LIMIT 15
+            """
+            
+        try:
+            async with self.get_session() as session:
+                # Pass topic parameter for the generic case
+                parameters = {"topic": topic} if topic not in ["microservices", "services", "architecture", "structure", "overview", "about"] else {}
+                result = await session.run(query, parameters)
+                records = await result.data()
+                logger.debug(f"Specialized query returned {len(records)} results for topic: {topic}")
+                return records
+        except Exception as e:
+            logger.error(f"Error during specialized high-level query: {e}", exc_info=True)
+            return []
+
+    async def raw_cypher_query(self, cypher_query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Executes a raw Cypher query for direct database inspection.
+        This is primarily useful for testing and debugging.
+        
+        Args:
+            cypher_query: The Cypher query to execute
+            parameters: Optional parameters for the query
+            
+        Returns:
+            The query results as a list of dictionaries
+        """
+        logger.info(f"Executing raw Cypher query: {cypher_query[:100]}...")
+        try:
+            async with self.get_session() as session:
+                result = await session.run(cypher_query, parameters or {})
+                records = await result.data()
+                logger.debug(f"Raw Cypher query returned {len(records)} results.")
+                return records
+        except Exception as e:
+            logger.error(f"Error during raw Cypher query: {e}", exc_info=True)
+            raise
+
+    async def knowledge_graph_query(self, query_type: str, keywords: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """
+        Advanced knowledge graph query that performs graph-based operations
+        to extract structural information rather than just vector similarity.
+        
+        Args:
+            query_type: Type of query to perform (services, relations, authors, dependencies)
+            keywords: Optional list of keywords to filter results
+            
+        Returns:
+            List of result dictionaries with the query results
+        """
+        logger.info(f"Executing knowledge graph query: {query_type}")
+        
+        try:
+            # Build query based on type
+            if query_type == "services":
+                # Find all services in the system by analyzing code structure and relationships
+                query = """
+                MATCH (f:File)-[:CONTAINS]->(fn:Function)
+                WHERE fn.name CONTAINS 'Service' OR fn.name CONTAINS 'service'
+                   OR f.path CONTAINS 'service' OR f.path CONTAINS 'Service'
+                WITH DISTINCT f.path AS service_file, collect(fn.name) AS functions
+                RETURN service_file, functions, size(functions) AS function_count
+                ORDER BY function_count DESC
+                LIMIT 20
+                """
+                
+            elif query_type == "dependencies":
+                # Try to identify dependencies between components
+                query = """
+                MATCH (f1:File)-[:CONTAINS]->(cc1:CodeChunk)
+                MATCH (f2:File)-[:CONTAINS]->(cc2:CodeChunk)
+                WHERE f1 <> f2 
+                   AND (cc1.text CONTAINS f2.path OR cc2.text CONTAINS f1.path)
+                RETURN f1.path AS source, f2.path AS target, count(*) AS strength
+                ORDER BY strength DESC
+                LIMIT 25
+                """
+                
+            elif query_type == "structure":
+                # Analyze codebase structure
+                query = """
+                MATCH (r:Repository)<-[:BELONGS_TO]-(f:File)
+                WITH r, f.language AS language, count(*) AS count
+                ORDER BY count DESC
+                RETURN r.url AS repository, 
+                       collect({language: language, count: count}) AS language_breakdown,
+                       sum(count) AS total_files
+                """
+                
+            elif query_type == "interface_analysis":
+                # Find interfaces and their implementations
+                query = """
+                MATCH (f:File)-[:CONTAINS]->(cl:Class)
+                WHERE cl.name CONTAINS 'Interface' OR cl.name STARTS WITH 'I' AND size(cl.name) > 1
+                RETURN f.path AS file, cl.name AS interface, cl.start_line AS line
+                ORDER BY file
+                LIMIT 20
+                """
+                
+            else:
+                # Default to a simple file-function relationship query
+                query = """
+                MATCH (f:File)-[:CONTAINS]->(fn:Function)
+                WITH f.path AS file_path, count(fn) AS function_count
+                WHERE function_count > 3
+                RETURN file_path, function_count
+                ORDER BY function_count DESC
+                LIMIT 20
+                """
+                
+            # Apply keyword filtering if provided
+            if keywords and len(keywords) > 0:
+                # This is a simplified approach - for production, you'd want to integrate this more carefully
+                # into each specific query type
+                keyword_conditions = " OR ".join([f"cc.text CONTAINS '{kw}'" for kw in keywords])
+                query = f"""
+                MATCH (f:File)-[:CONTAINS]->(cc:CodeChunk)
+                WHERE {keyword_conditions}
+                WITH DISTINCT f
+                {query}
+                """
+                
+            async with self.get_session() as session:
+                result = await session.run(query)
+                records = await result.data()
+                logger.debug(f"Knowledge graph query returned {len(records)} results.")
+                return records
+                
+        except Exception as e:
+            logger.error(f"Error during knowledge graph query: {e}", exc_info=True)
+            return []
+
 
 # Instantiate the manager for use in ingestion and the main app
 db_manager = Neo4jManager(

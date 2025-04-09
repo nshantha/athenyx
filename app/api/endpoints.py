@@ -1,6 +1,10 @@
 # app/api/endpoints.py
 import logging
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
+import asyncio
+from typing import AsyncGenerator
+import json
 
 from app.schemas.models import QueryRequest, QueryResponse, ChunkResult # Import request/response models
 from app.agent.agent_executor import run_agent # Import the agent runner
@@ -8,10 +12,26 @@ from app.agent.agent_executor import run_agent # Import the agent runner
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/query", response_model=QueryResponse)
+async def stream_agent_response(query: str, conversation_history: str = None) -> AsyncGenerator[str, None]:
+    """Stream the agent's response with proper SSE formatting."""
+    try:
+        async for chunk in run_agent(query, conversation_history):
+            if chunk:
+                # Properly escape newlines and quote characters for SSE
+                escaped_chunk = chunk.replace('\n', '\\n').replace('"', '\\"')
+                # Format as Server-Sent Event
+                yield f"data: {escaped_chunk}\n\n"
+            # Add periodic keep-alive for long-running operations
+            await asyncio.sleep(0)
+    except Exception as e:
+        logger.error(f"Error streaming response: {e}", exc_info=True)
+        error_msg = str(e).replace('\n', '\\n').replace('"', '\\"')
+        yield f"data: Error: {error_msg}\n\n"
+
+@router.post("/query")
 async def query_agent(request: QueryRequest):
     """
-    Receives a user query, runs the agent, and returns the response.
+    Receives a user query, runs the agent, and returns a streaming response.
     """
     logger.info(f"Received query: '{request.query}'")
     if not request.query:
@@ -20,32 +40,7 @@ async def query_agent(request: QueryRequest):
             detail="Query cannot be empty."
         )
 
-    try:
-        # Run the agent asynchronously
-        final_state = await run_agent(request.query)
-
-        # TODO: Extract context used for the answer if needed.
-        # This requires modifying the AgentState and potentially the graph
-        # to explicitly store the documents retrieved by the tools.
-        # For now, we just return the answer.
-        retrieved_context = None # Placeholder
-
-        if final_state.get("error"):
-             # If the agent itself caught an error and put it in the state
-             logger.error(f"Agent execution finished with error: {final_state['error']}")
-             # Return error in response body, maybe use 500?
-             return QueryResponse(answer=final_state.get("answer", "Agent failed"), error=final_state["error"])
-             # Or raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=final_state["error"])
-
-
-        answer = final_state.get("answer", "No answer generated.")
-
-        return QueryResponse(answer=answer, retrieved_context=retrieved_context)
-
-    except Exception as e:
-        # Catch unexpected errors during the API call/agent invocation setup
-        logger.critical(f"Unexpected error processing query '{request.query}': {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An internal server error occurred: {e}"
-        )
+    return StreamingResponse(
+        stream_agent_response(request.query, request.conversation_history),
+        media_type="text/event-stream"
+    )
