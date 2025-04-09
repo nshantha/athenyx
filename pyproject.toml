@@ -1,0 +1,48 @@
+[tool.poetry]
+name = "ai-knowledge-graph"
+version = "0.1.0"
+description = "AI Knowledge Graph for Software Understanding"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# Core API & Agent
+fastapi = "^0.111.0"
+uvicorn = { extras = ["standard"], version = "^0.29.0" }
+pydantic = { extras = ["email"], version = "^2.7.1" }
+pydantic-settings = "^2.2.1"
+langchain = "^0.2.1"
+langgraph = "^0.0.64"
+langchain-openai = "^0.1.7"
+langchain-community = "^0.2.0"
+neo4j = "^5.20.0"
+python-dotenv = "^1.0.1"
+requests = "^2.31.0" # For UI -> API communication
+tavily-python = "^0.3.3" # Web Search Tool
+
+# Ingestion
+gitpython = "^3.1.43"
+tree-sitter = "^0.21.3" # Core tree-sitter library
+tree-sitter-languages = "^1.10.2" # Helper to build/find grammars
+
+# UI
+streamlit = "^1.35.0"
+
+# Logging
+structlog = "^24.1.0" # Optional: for structured logging, can use standard logging too
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
+pytest-asyncio = "^0.23.6"
+httpx = "^0.27.0" # For testing FastAPI async client
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+# Optional: Script shortcut for ingestion
+[tool.poetry.scripts]
+ingest = "ingestion.main:run_ingestion"
