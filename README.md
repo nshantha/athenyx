@@ -4,122 +4,225 @@ This project implements an AI-Powered Knowledge Graph system to index, connect, 
 
 **Vision:** Empower engineering teams with instant, contextual insights into their software systems.
 
-**MVP Focus:** Ingest a single Git repository (Python code), build a graph of its structure (Files, Functions, Classes) and semantic embeddings (Code Chunks) in Neo4j, and provide a Q&A interface using RAG and Web Search orchestrated by LangGraph.
+## Current Features
+
+* Ingests Git repositories
+* Performs basic structural parsing (Files, Functions, Classes/Structs/Interfaces) for multiple languages:
+  * Python
+  * Go
+  * C#
+  * Java
+  * JavaScript
+* Chunks code text
+* Generates vector embeddings for code chunks (using OpenAI API or configurable for local models)
+* Loads structural data and vector embeddings into Neo4j (Graph + Vector Index)
+* Provides a FastAPI backend API (`/api/query`)
+* Features a LangGraph agent orchestrating:
+  * Retrieval-Augmented Generation (RAG) using semantic vector search on code chunks
+  * Web search via Tavily (optional, requires API key)
+* Streams the agent's final answer token-by-token
+* Offers a Streamlit web UI for interaction
+* Includes Docker Compose setup for easier deployment
 
 ## Architecture Overview
 
 * **Data Layer:** Neo4j (Graph Database + Vector Index)
-* **Ingestion Layer:** Python scripts (Git, Tree-sitter, LangChain Embeddings, Neo4j Loader)
-* **Processing/Query Layer:** LangChain & LangGraph (Agent, Tools: RAG, Web Search)
-* **API Layer:** FastAPI
-* **Presentation Layer:** Streamlit
+* **Ingestion Layer:** Python scripts (`ingestion/`) using GitPython, Tree-sitter, Sentence-Transformers/OpenAI client, Neo4j driver
+* **Processing/Query Layer:** LangChain & LangGraph (`app/agent/`) defining the agent workflow and tools
+* **API Layer:** FastAPI (`app/main.py`, `app/api/`) serving the agent
+* **Presentation Layer:** Streamlit (`ui/app.py`) providing the web interface
 
 ## Prerequisites
 
-* [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
-* [Python](https://www.python.org/downloads/) >= 3.10
-* [Poetry](https://python-poetry.org/docs/#installation) (for dependency management)
+### Core Requirements (All Setups)
+
 * [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-* C/C++ Compiler: Required by `tree-sitter` to build language grammars.
-    * **Linux (Debian/Ubuntu):** `sudo apt-get update && sudo apt-get install build-essential`
-    * **macOS:** Install Xcode Command Line Tools: `xcode-select --install`
-    * **Windows:** Install Visual Studio with C++ build tools (Community Edition is free). Ensure `cl.exe` is in your PATH. [See Python docs for details](https://wiki.python.org/moin/WindowsCompilers).
-* API Keys:
-    * OpenAI API Key
-    * Tavily API Key (for web search)
+* API Keys (Store in `.env` file):
+  * `OPENAI_API_KEY`: Required for the LLM agent (e.g., GPT-4o-mini) and potentially embeddings if not using a local model. Get from [OpenAI Platform](https://platform.openai.com/api-keys).
+  * `TAVILY_API_KEY`: Optional, only needed if you want the agent to perform web searches via Tavily. Get from [Tavily AI](https://tavily.com/).
 
-## Setup & Installation (Tree-sitter Focus)
+### For Docker Execution (Recommended)
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <your-repo-url>
-    cd ai-knowledge-graph
-    ```
+* [Docker](https://docs.docker.com/get-docker/)
+* [Docker Compose](https://docs.docker.com/compose/install/) (usually included with Docker Desktop)
 
-2.  **Install Tree-sitter & Build Grammars:**
-    * **Crucial Step:** The `tree-sitter` Python package needs compiled language grammars. The `tree-sitter-languages` package helps manage this.
-    * Ensure you have a C/C++ compiler installed (see Prerequisites).
-    * Install Python dependencies using Poetry. This *should* trigger the grammar building via `tree-sitter-languages`:
-        ```bash
-        poetry install
-        ```
-    * **Verification (Optional but Recommended):** Check if the Python grammar was built correctly. You can run this Python snippet:
-        ```python
-        from tree_sitter_languages import get_language, get_parser
-        try:
-            language = get_language('python')
-            parser = get_parser('python')
-            print("Tree-sitter Python grammar loaded successfully.")
-            # Try parsing a simple string
-            tree = parser.parse(bytes("def hello():\n  pass", "utf8"))
-            print("Basic parsing test successful.")
-            # print(tree.root_node.sexp()) # Uncomment for detailed S-expression
-        except Exception as e:
-            print(f"Error loading or testing Tree-sitter Python grammar: {e}")
-            print("Please ensure build tools are installed and `poetry install` completed without errors.")
-            print("You might need to consult the tree-sitter and tree-sitter-languages documentation for troubleshooting.")
-        ```
-    * **Troubleshooting:** If `poetry install` fails during grammar building or the verification fails, double-check compiler installation. You might need to manually clone specific grammar repositories (e.g., `github.com/tree-sitter/tree-sitter-python`) and follow their build instructions if the helper package fails.
+### For Local Execution
 
-3.  **Configure Environment Variables:**
-    * Copy the example environment file: `cp .env.example .env`
-    * **Edit `.env`:** Fill in your actual `NEO4J_PASSWORD` (must match `docker-compose.yml`), `OPENAI_API_KEY`, `TAVILY_API_KEY`. Review other settings like `INGEST_REPO_URL`.
+* [Python](https://www.python.org/downloads/) >= 3.10
+* [Poetry](https://python-poetry.org/docs/#installation) (Python dependency manager)
+* **C/C++ Compiler:** Required by the `tree-sitter` package to build language grammars during `poetry install`.
+  * *Linux (Debian/Ubuntu):* `sudo apt-get update && sudo apt-get install build-essential`
+  * *macOS:* Install Xcode Command Line Tools: `xcode-select --install`
+  * *Windows:* Install "Build Tools for Visual Studio" (select C++ build tools workload). Community version is free. Ensure compiler (`cl.exe`) is in your system's PATH. [See Python docs for details](https://wiki.python.org/moin/WindowsCompilers).
+* **Neo4j Database Instance:** A running Neo4j database accessible from your local machine.
+  * *Local:* Install [Neo4j Desktop](https://neo4j.com/download/) or Neo4j Community/Enterprise Server. Start the database. The default connection URI is usually `bolt://localhost:7687`.
+  * *Cloud:* Use [Neo4j AuraDB](https://neo4j.com/cloud/platform/aura-database/) (offers a free tier). Create an instance and note its connection URI, username, and password.
 
-4.  **Start Services (Neo4j, Backend, Frontend):**
-    ```bash
-    docker-compose up --build -d
-    ```
-    * `-d` runs services in the background.
-    * `--build` ensures images are rebuilt if Dockerfile or code changes.
-    * Wait a minute for Neo4j to initialize fully (check logs: `docker-compose logs neo4j`).
+## Setup
 
-5.  **Run Initial Ingestion:**
-    * Execute the ingestion script *inside* the running backend container (as it has all dependencies installed):
-    ```bash
-    docker-compose exec backend poetry run ingest
-    ```
-    * Alternatively, if you installed dependencies locally (`poetry install`), you can run:
-        ```bash
-        poetry run ingest
-        ```
-    * This will clone the repo specified in `.env`, parse it, embed, and load into Neo4j. Monitor the console output. This might take some time depending on the repository size and API speeds.
+### 1. Clone the Repository
+
+```bash
+git clone <your-repo-url> # Or the URL of this project
+cd ai-knowledge-graph     # Or your project directory name
+```
+
+### 2. Configure Environment (.env file)
+
+Copy the example environment file:
+```bash
+# Linux/macOS
+cp .env.example .env
+
+# Windows CMD
+copy .env.example .env
+
+# Windows PowerShell
+Copy-Item .env.example .env
+```
+
+Edit the `.env` file with your specific settings:
+* `OPENAI_API_KEY`: Your key (required)
+* `TAVILY_API_KEY`: Your key (optional)
+* `NEO4J_URI`:
+  * For Docker: Use `bolt://neo4j:7687` (connects to the Neo4j container)
+  * For Local: Use your local/cloud Neo4j URI (e.g., `bolt://localhost:7687` or AuraDB URI)
+* `NEO4J_USERNAME`: Your Neo4j username (default `neo4j`)
+* `NEO4J_PASSWORD`: Your Neo4j password. Must match the one set in `docker-compose.yml` if using Docker
+* `EMBEDDING_MODEL_NAME`: (If using local Sentence Transformers) e.g., `all-MiniLM-L6-v2`
+* `EMBEDDING_DIMENSIONS`: Crucial. Set this to match your embedding model (e.g., 1536 for OpenAI `text-embedding-3-small`, 384 for `all-MiniLM-L6-v2`, 768 for `bge-base-en-v1.5`). The Neo4j index depends on this.
+* `OPENAI_EMBEDDING_MODEL`: (If using OpenAI embeddings) e.g., `text-embedding-3-small`
+* `OPENAI_LLM_MODEL`: The model for the agent, e.g., `gpt-4o-mini`
+* `INGEST_REPO_URL`: The Git URL of the repository you want to index (e.g., `https://github.com/GoogleCloudPlatform/microservices-demo.git`)
+* `INGEST_TARGET_EXTENSIONS`: Comma-separated list of file extensions to process (e.g., `.py,.go,.cs,.java,.js`)
+* `BACKEND_API_URL`:
+  * For Docker: Use `http://backend:8000` (the frontend container connects to the backend container)
+  * For Local: Use `http://localhost:8000` (the frontend process connects to the backend process)
+
+### 3. Install Dependencies & Build Grammars
+
+This step uses Poetry to install Python packages and attempts to build Tree-sitter grammars for the supported languages (Python, Go, C#, Java, JS).
+Ensure C/C++ compiler prerequisite is met.
+
+Run in the project root:
+```bash
+poetry install
+```
+
+Monitor Output: Check for errors during installation, especially during steps involving tree-sitter-languages or building specific grammars. If builds fail, consult the compiler setup instructions and Tree-sitter documentation.
+
+## Running the Application
+
+Choose one of the following methods:
+
+### Option 1: Running with Docker (Recommended)
+
+Manages Neo4j, backend, and frontend services together.
+
+#### Build and Start Services
+
+```bash
+docker-compose up --build -d
+```
+* `-d`: Runs services in detached (background) mode
+* `--build`: Rebuilds Docker images if code or Dockerfiles have changed
+
+Wait ~1 minute for Neo4j to initialize on the first run. Check status: `docker-compose ps` or logs: `docker-compose logs neo4j`.
+
+#### Run Data Ingestion
+
+Execute the ingestion script inside the backend container:
+```bash
+docker-compose exec backend poetry run python -m ingestion.main
+```
+
+Monitor the terminal output for progress (cloning, parsing, chunking, embedding, loading) and any errors. This step populates the Neo4j container.
+
+#### Access Services
+
+* Frontend UI: http://localhost:8501
+* Backend API Docs: http://localhost:8000/docs
+* Neo4j Browser: http://localhost:7474 (Login with `NEO4J_USERNAME` / `NEO4J_PASSWORD` from `.env`)
+
+#### Stopping Services
+
+```bash
+docker-compose down
+```
+
+To remove the Neo4j data volume (deletes all graph data): `docker-compose down -v`
+
+### Option 2: Running Locally (Requires Manual Setup)
+
+Requires managing the Neo4j instance and Python processes separately.
+
+1. **Ensure Prerequisites**: Verify Python, Poetry, Compiler, and a running Neo4j instance are ready.
+
+2. **Install Dependencies**: Run `poetry install` (if not already done). Check for Tree-sitter grammar build success.
+
+3. **Configure .env**: Make sure `NEO4J_URI` points to your local/cloud Neo4j instance and `BACKEND_API_URL` is `http://localhost:8000`.
+
+4. **Run Data Ingestion**:
+   * Open a terminal in the project root
+   * Run: `poetry run python -m ingestion.main`
+   * Wait for completion and check logs/Neo4j
+
+5. **Run Backend API**:
+   * Open a new terminal
+   * Run: `poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+   * Keep this terminal running
+
+6. **Run Frontend UI**:
+   * Open a third terminal
+   * Run: `poetry run streamlit run ui/app.py --server.port 8501`
+   * Keep this terminal running
+
+7. **Access Services**:
+   * Frontend UI: http://localhost:8501
+   * Backend API Docs: http://localhost:8000/docs
+   * Neo4j Browser: Access your local/cloud instance directly via its specific URL/port
 
 ## Usage
 
-1.  **Access the UI:** Open your web browser to `http://localhost:8501`.
-2.  **Ask Questions:** Type questions about the codebase you ingested (e.g., "What does the `parse` function in `parser.py` do?", "Find code related to API clients").
-3.  **Access the API:** The FastAPI backend is available at `http://localhost:8000`. You can explore the interactive documentation at `http://localhost:8000/docs`.
-4.  **Access Neo4j Browser:** Open `http://localhost:7474` to explore the graph directly using Cypher queries. Login with `neo4j` and the password set in `.env`/`docker-compose.yml`.
+1. Ensure all required services are running (either via Docker or locally)
+2. Ensure the data ingestion has successfully completed for your target repository
+3. Navigate to the Streamlit UI (usually http://localhost:8501)
+4. Enter your questions about the indexed codebase into the input box and click "Ask AI Assistant"
+5. Observe the streamed answer
 
 ## Development
 
-* Code changes in the mounted `/app` directory should trigger auto-reload for FastAPI and Streamlit within the running Docker containers.
-* Run tests (placeholder): `docker-compose exec backend poetry run pytest`
+* **Docker**: If using `docker-compose up`, changes to Python files within the project directory (mounted into `/app`) should trigger automatic reloading for both the Uvicorn (backend) and Streamlit (frontend) servers. If you change dependencies (`pyproject.toml`) or the Dockerfile, you'll need to rebuild the images (`docker-compose build` or `docker-compose up --build`).
+* **Local**: Both `uvicorn --reload` and `streamlit run` automatically watch for changes in the relevant Python files and reload the servers.
+
+## Troubleshooting Common Issues
+
+* **ModuleNotFoundError**: Usually means a dependency is missing. Run `poetry install`. Check `pyproject.toml`.
+* **Tree-sitter Build Errors**: Ensure C/C++ compiler is installed and accessible in your PATH. Consult tree-sitter and tree-sitter-languages documentation.
+* **API Key Errors (OpenAI/Tavily)**: Double-check variable names (`OPENAI_API_KEY`, `TAVILY_API_KEY`) and values in your `.env` file. Ensure the file is saved and located in the project root.
+* **Neo4j Connection Errors**: Verify `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` in `.env` match your running Neo4j instance. Ensure Neo4j is running and accessible (check firewall if needed). If using Docker, ensure the Neo4j container is healthy (`docker-compose ps`).
+* **NameResolutionError: Failed to resolve 'backend' (UI)**: You are likely running the UI locally but `BACKEND_API_URL` in `.env` is set to `http://backend:8000` (for Docker). Change it to `http://localhost:8000` for local runs.
+* **Embedding Dimension Errors**: Ensure `EMBEDDING_DIMENSIONS` in `.env` matches the output dimension of your chosen embedding model. If you change models/dimensions, you may need to DROP the old vector index in Neo4j (`DROP INDEX code_chunk_embeddings`) before re-running ingestion.
+* **Rate Limit Errors (OpenAI)**: The embedding step may take time or fail if you process large repositories. Solutions: Add delays (`ingestion/processing/embedding.py`), filter input files (`ingestion/main.py`), request higher OpenAI limits, or switch to a local embedding model.
 
 ## Project Structure (Brief)
 
-* `app/`: FastAPI backend, agent logic, database interactions.
-* `ingestion/`: Scripts and modules for data ingestion pipeline.
-* `ui/`: Streamlit frontend application.
-* `tests/`: Placeholder for automated tests.
+* `app/`: FastAPI backend, agent logic, database interactions
+* `ingestion/`: Scripts and modules for data ingestion pipeline
+* `ui/`: Streamlit frontend application
+* `tests/`: Placeholder for automated tests
+* `Dockerfile`, `docker-compose.yml`: Docker configuration
+* `pyproject.toml`, `poetry.lock`: Dependency management
+* `.env.example`, `.env`: Environment variables
 
 ## Next Steps / Future Enhancements
 
-* Implement more robust error handling.
-* Add more sophisticated graph queries as tools.
-* Implement hybrid retrieval strategies.
-* Support more programming languages.
-* Add unit and integration tests.
-* Implement incremental updates for ingestion.
-* Add Confluence/Jira integration.
-
-## Documentation for LLM Ingestion
-
-This project uses a modular structure. Key components are:
-* **Ingestion (`ingestion/`):** Clones Git repos (`git_loader.py`), uses Tree-sitter (`tree_sitter_parser.py`) for structural parsing (Files, Classes, Functions for Python), chunks code (`chunking.py`), generates embeddings via OpenAI (`embedding.py`), and loads data into Neo4j (`neo4j_loader.py`, `db/neo4j_manager.py`), including creating structural nodes/relationships and vector indexes. It checks the last indexed commit SHA before processing.
-* **Database (`app/db/neo4j_manager.py`):** Handles Neo4j connection, runs Cypher queries (schema setup, data loading, vector search using `db.index.vector.queryNodes`). Uses async driver.
-* **Agent (`app/agent/`):** Uses LangGraph (`graph.py`) to define a state machine. Tools (`tools.py`) include a Neo4j vector RAG retriever and a Tavily web search tool. The agent executor (`agent_executor.py`) compiles and runs the graph.
-* **API (`app/api/endpoints.py`, `app/main.py`):** FastAPI application exposing a `/query` endpoint that takes a user question and returns the agent's synthesized answer. Uses Pydantic for validation (`app/schemas/models.py`).
-* **UI (`ui/app.py`):** Streamlit application providing a simple chat interface that calls the FastAPI backend.
-* **Configuration (`app/core/config.py`, `ingestion/config.py`, `.env`):** Settings loaded from environment variables using Pydantic Settings.
-* **Containerization (`Dockerfile`, `docker-compose.yml`):** Defines how to build and run the application services (backend, frontend, Neo4j).
+* Implement more robust error handling throughout
+* Add dedicated graph query tools to the agent (e.g., finding callers/callees)
+* Implement advanced hybrid retrieval strategies (Graph RAG)
+* Refine Tree-sitter parsers for deeper analysis (imports, specific calls)
+* Add comprehensive unit and integration tests
+* Implement efficient incremental updates for the ingestion pipeline
+* Integrate Confluence/Jira data sources
+* Improve UI/UX (display context, chat history, graph visualizations)
+* Optimize performance (embedding speed, query speed)
