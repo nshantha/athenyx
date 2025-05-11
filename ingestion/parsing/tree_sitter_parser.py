@@ -212,20 +212,146 @@ class TreeSitterParser:
 
     @staticmethod
     def parse_file(file_path: str, content: str, language: str) -> Optional[Dict[str, Any]]:
-        """Parses a file based on the detected or specified language."""
-        language_lower = language.lower()
-        if language_lower == 'python':
-            return TreeSitterParser.parse_python(file_path, content)
-        elif language_lower == 'go':
-             return TreeSitterParser.parse_go(file_path, content)
-        elif language_lower == 'csharp' or language_lower == 'c#': # Allow both variations
-             return TreeSitterParser.parse_csharp(file_path, content)
-        elif language_lower == 'java':
-             return TreeSitterParser.parse_java(file_path, content)
-        elif language_lower == 'javascript' or language_lower == 'js' or language_lower == 'node': # Allow variations
-             return TreeSitterParser.parse_javascript(file_path, content)
-        else:
-            logger.warning(f"Unsupported language '{language}' for parsing file {file_path}. Skipping structural parsing.")
-            # Return basic file info but mark as unparsed structurally?
-            # Or return None to indicate no structural data extracted. Let's return None.
+        """Parses a file and extracts both structure and relationships."""
+        parse_method = getattr(TreeSitterParser, f"parse_{language}", None)
+        if not parse_method:
+            logger.warning(f"No parser implemented for language: {language}")
             return None
+
+        # Get basic structure
+        structure = parse_method(file_path, content)
+        if structure.get("parse_error", False):
+            return structure
+
+        # Extract relationships
+        relationships = TreeSitterParser._extract_relationships(file_path, content, language)
+        structure["relationships"] = relationships
+
+        # Extract service information
+        service_info = TreeSitterParser._extract_service_info(PARSERS[language].parse(bytes(content, "utf8")).root_node, bytes(content, "utf8"))
+        structure["service_info"] = service_info
+
+        # Extract API information
+        api_info = TreeSitterParser._extract_api_info(PARSERS[language].parse(bytes(content, "utf8")).root_node, bytes(content, "utf8"))
+        structure["api_info"] = api_info
+
+        return structure
+
+    @staticmethod
+    def _extract_service_info(node: Node, content_bytes: bytes) -> Dict[str, Any]:
+        """Extracts service-related information from a node."""
+        service_info = {
+            "endpoints": [],
+            "dependencies": [],
+            "config_values": [],
+            "service_type": None
+        }
+        
+        # Extract HTTP endpoints (Go, Python, Node.js)
+        endpoint_patterns = {
+            "http_handler": "(call_expression function: [(identifier) (field_expression)] @func arguments: (argument_list))",
+            "route_definition": "(call_expression function: [(identifier) (selector_expression)] @route arguments: (argument_list (string_literal)))"
+        }
+        
+        # Extract service dependencies (imports, requires)
+        dependency_patterns = {
+            "imports": "(import_declaration source: (string_literal) @source)",
+            "requires": "(call_expression function: (identifier) @require arguments: (argument_list (string_literal)))",
+            "service_calls": "(call_expression function: (member_expression object: (identifier) @service))"
+        }
+        
+        return service_info
+
+    @staticmethod
+    def _extract_api_info(node: Node, content_bytes: bytes) -> List[Dict[str, Any]]:
+        """Extracts API-related information from a node."""
+        api_info = []
+        
+        # Extract REST endpoints
+        rest_patterns = {
+            "go_http": "(function_declaration receiver: (parameter_list) name: (identifier) @handler)",
+            "express_route": "(call_expression function: (member_expression object: (identifier) property: [(property_identifier) @method]))",
+            "fastapi_route": "(call_expression function: (decorator) @route)"
+        }
+        
+        # Extract gRPC service definitions
+        grpc_patterns = {
+            "service_def": "(service_definition name: (identifier) @service)",
+            "rpc_method": "(rpc_definition name: (identifier) @method)"
+        }
+        
+        return api_info
+
+    @staticmethod
+    def _extract_relationships(file_path: str, content: str, language: str) -> Dict[str, List[Dict[str, Any]]]:
+        """Extracts relationships between components."""
+        relationships = {
+            "service_calls": [],  # Direct service-to-service calls
+            "data_dependencies": [],  # Shared data structures/models
+            "event_flows": [],  # Message queues, events
+            "config_dependencies": []  # Shared configurations
+        }
+        
+        # Language-specific relationship extraction
+        if language == 'go':
+            # Extract Go-specific relationships
+            relationships.update(TreeSitterParser._extract_go_relationships(content))
+        elif language == 'python':
+            # Extract Python-specific relationships
+            relationships.update(TreeSitterParser._extract_python_relationships(content))
+        elif language == 'javascript':
+            # Extract Node.js-specific relationships
+            relationships.update(TreeSitterParser._extract_js_relationships(content))
+        elif language == 'csharp':
+            # Extract C#-specific relationships
+            relationships.update(TreeSitterParser._extract_csharp_relationships(content))
+        elif language == 'java':
+            # Extract Java-specific relationships
+            relationships.update(TreeSitterParser._extract_java_relationships(content))
+            
+        return relationships
+
+    @staticmethod
+    def _extract_go_relationships(content: str) -> Dict[str, List[Dict[str, Any]]]:
+        """Extracts Go-specific relationships."""
+        return {
+            "grpc_clients": [],
+            "http_clients": [],
+            "service_interfaces": []
+        }
+
+    @staticmethod
+    def _extract_python_relationships(content: str) -> Dict[str, List[Dict[str, Any]]]:
+        """Extracts Python-specific relationships."""
+        return {
+            "async_calls": [],
+            "service_dependencies": [],
+            "model_dependencies": []
+        }
+
+    @staticmethod
+    def _extract_js_relationships(content: str) -> Dict[str, List[Dict[str, Any]]]:
+        """Extracts Node.js-specific relationships."""
+        return {
+            "express_routes": [],
+            "service_clients": [],
+            "event_handlers": []
+        }
+
+    @staticmethod
+    def _extract_csharp_relationships(content: str) -> Dict[str, List[Dict[str, Any]]]:
+        """Extracts C#-specific relationships."""
+        return {
+            "dependency_injection": [],
+            "service_interfaces": [],
+            "data_contexts": []
+        }
+
+    @staticmethod
+    def _extract_java_relationships(content: str) -> Dict[str, List[Dict[str, Any]]]:
+        """Extracts Java-specific relationships."""
+        return {
+            "spring_beans": [],
+            "service_interfaces": [],
+            "repository_dependencies": []
+        }

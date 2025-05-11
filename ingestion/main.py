@@ -3,6 +3,10 @@ import asyncio
 import logging
 import os
 import time
+from typing import Dict, Any, List
+import yaml
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configure logging early
 # You might want a more sophisticated setup using app.core.logging_conf later
@@ -16,6 +20,7 @@ from ingestion.parsing.tree_sitter_parser import TreeSitterParser
 from ingestion.processing.chunking import chunk_code
 from ingestion.processing.embedding import embed_chunks
 from ingestion.loading.neo4j_loader import Neo4jLoader
+from ingestion.loading.microservices_loader import MicroservicesLoader  # Fixed import path
 from app.db.neo4j_manager import db_manager # Import the instantiated manager
 from app.core.config import settings # For embedding dimensions
 
@@ -200,6 +205,208 @@ def run_ingestion():
     except Exception as e:
         logger.critical(f"Unhandled exception in ingestion pipeline: {e}", exc_info=True)
 
+class MicroservicesIngestion:
+    def __init__(self, repo_path: str, neo4j_uri: str, neo4j_user: str, neo4j_password: str):
+        self.repo_path = repo_path
+        self.loader = MicroservicesLoader(neo4j_uri, neo4j_user, neo4j_password)
+        self.parser = TreeSitterParser()
+        
+        # Service metadata from configuration
+        self.service_metadata = {}
+        
+        # Ensure repository exists
+        self.clone_repository()
+        self.load_service_metadata()
+
+    def clone_repository(self):
+        """Clone the microservices-demo repository if it doesn't exist."""
+        if not os.path.exists(self.repo_path):
+            logger.info(f"Creating directory: {self.repo_path}")
+            os.makedirs(self.repo_path)
+        
+        src_path = os.path.join(self.repo_path, "src")
+        if not os.path.exists(src_path):
+            logger.info("Cloning microservices-demo repository...")
+            import subprocess
+            try:
+                # Clone the repository
+                subprocess.run([
+                    "git", "clone", "--depth", "1",
+                    "https://github.com/GoogleCloudPlatform/microservices-demo.git",
+                    self.repo_path
+                ], check=True)
+                logger.info("Repository cloned successfully")
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(f"Failed to clone repository: {e}")
+        else:
+            logger.info("Repository already exists, skipping clone")
+
+    def load_service_metadata(self):
+        """Load service metadata from kubernetes manifests or docker-compose."""
+        k8s_path = os.path.join(self.repo_path, "kubernetes-manifests")
+        compose_path = os.path.join(self.repo_path, "docker-compose.yaml")
+        
+        if os.path.exists(k8s_path):
+            for filename in os.listdir(k8s_path):
+                if filename.endswith(('.yaml', '.yml')):
+                    with open(os.path.join(k8s_path, filename)) as f:
+                        try:
+                            manifest = yaml.safe_load(f)
+                            if manifest.get('kind') == 'Deployment':
+                                service_name = manifest['metadata']['name']
+                                self.service_metadata[service_name] = {
+                                    'containers': manifest['spec']['template']['spec']['containers'],
+                                    'labels': manifest['metadata'].get('labels', {}),
+                                    'annotations': manifest['metadata'].get('annotations', {})
+                                }
+                        except yaml.YAMLError as e:
+                            logger.error(f"Error parsing {filename}: {e}")
+        elif os.path.exists(compose_path):
+            try:
+                with open(compose_path) as f:
+                    compose = yaml.safe_load(f)
+                    for service_name, service_def in compose.get('services', {}).items():
+                        self.service_metadata[service_name] = service_def
+            except yaml.YAMLError as e:
+                logger.error(f"Error parsing docker-compose.yaml: {e}")
+
+    def detect_language(self, service_path: str) -> str:
+        """Detect the primary language of a service."""
+        extension_map = {
+            '.py': 'python',
+            '.go': 'go',
+            '.cs': 'csharp',
+            '.java': 'java',
+            '.js': 'javascript',
+            '.ts': 'typescript'
+        }
+        
+        extensions = {}
+        for root, _, files in os.walk(service_path):
+            for file in files:
+                ext = os.path.splitext(file)[1].lower()
+                if ext in extension_map:
+                    extensions[ext] = extensions.get(ext, 0) + 1
+        
+        if not extensions:
+            return None
+            
+        primary_ext = max(extensions.items(), key=lambda x: x[1])[0]
+        return extension_map[primary_ext]
+
+    def process_service(self, service_path: str, service_name: str) -> Dict[str, Any]:
+        """Process a single microservice directory."""
+        language = self.detect_language(service_path)
+        if not language:
+            logger.warning(f"Could not detect language for service: {service_name}")
+            return None
+
+        service_data = {
+            "service_name": service_name,
+            "language": language,
+            "files": [],
+            "relationships": {
+                "service_calls": [],
+                "data_dependencies": [],
+                "event_flows": [],
+                "config_dependencies": []
+            }
+        }
+
+        # Add metadata from k8s/docker-compose
+        if service_name in self.service_metadata:
+            service_data.update({
+                "metadata": self.service_metadata[service_name]
+            })
+
+        # Process each file in the service
+        for root, _, files in os.walk(service_path):
+            for file in files:
+                if file.endswith(('.py', '.go', '.cs', '.java', '.js', '.ts')):
+                    file_path = os.path.join(root, file)
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            parsed = self.parser.parse_file(file_path, content, language)
+                            if parsed:
+                                service_data["files"].append(parsed)
+                                
+                                # Merge relationships
+                                for rel_type, rels in parsed.get("relationships", {}).items():
+                                    if rels:
+                                        service_data["relationships"][rel_type].extend(rels)
+                                
+                    except Exception as e:
+                        logger.error(f"Error processing file {file_path}: {e}")
+
+        return service_data
+
+    def process_all_services(self):
+        """Process all microservices in the repository."""
+        src_path = os.path.join(self.repo_path, "src")
+        if not os.path.exists(src_path):
+            raise ValueError(f"Source directory not found: {src_path}")
+
+        # Create indices for better performance
+        self.loader.create_indices()
+
+        # Process each service directory in parallel
+        with ThreadPoolExecutor() as executor:
+            future_to_service = {}
+            for service_dir in os.listdir(src_path):
+                service_path = os.path.join(src_path, service_dir)
+                if os.path.isdir(service_path):
+                    future = executor.submit(self.process_service, service_path, service_dir)
+                    future_to_service[future] = service_dir
+
+            for future in as_completed(future_to_service):
+                service_name = future_to_service[future]
+                try:
+                    service_data = future.result()
+                    if service_data:
+                        self.loader.load_microservice_structure(service_data)
+                        logger.info(f"Successfully processed service: {service_name}")
+                except Exception as e:
+                    logger.error(f"Error processing service {service_name}: {e}")
+
+    def close(self):
+        """Clean up resources."""
+        self.loader.close()
+
+def main():
+    """Main entry point for microservices ingestion."""
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+    # Get configuration from environment or config file
+    repo_path = os.getenv("REPO_PATH", "./cloned_repo")
+    neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    neo4j_user = os.getenv("NEO4J_USER", "neo4j")
+    neo4j_password = os.getenv("NEO4J_PASSWORD", "password")
+
+    ingestion = None
+    try:
+        # Initialize and run ingestion
+        ingestion = MicroservicesIngestion(repo_path, neo4j_uri, neo4j_user, neo4j_password)
+        ingestion.process_all_services()
+        logger.info("Successfully completed ingestion of all services")
+
+    except Exception as e:
+        logger.error(f"Error during ingestion: {e}", exc_info=True)
+        if isinstance(e, RuntimeError) and "Failed to clone repository" in str(e):
+            logger.error("Please ensure you have git installed and can access GitHub")
+        elif isinstance(e, ValueError) and "Source directory not found" in str(e):
+            logger.error("Repository structure is not as expected. Please check the repository contents")
+    finally:
+        # Clean up resources
+        if ingestion:
+            try:
+                ingestion.close()
+            except Exception as e:
+                logger.error(f"Error during cleanup: {e}")
+
 if __name__ == "__main__":
-    # This allows running `python -m ingestion.main`
-    run_ingestion()
+    main()
