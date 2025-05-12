@@ -4,12 +4,23 @@ Specialized loader for handling microservices architecture in Neo4j.
 import logging
 from typing import Dict, Any, List
 from neo4j import GraphDatabase
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class MicroservicesLoader:
-    def __init__(self, neo4j_uri: str, neo4j_user: str, neo4j_password: str):
-        self.driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
+    def __init__(self, neo4j_uri: str = None, neo4j_user: str = None, neo4j_password: str = None):
+        """
+        Initialize the MicroservicesLoader with Neo4j connection parameters.
+        If parameters are not provided, they will be loaded from settings.
+        """
+        # Use provided parameters or fall back to settings
+        uri = neo4j_uri or settings.neo4j_uri
+        user = neo4j_user or settings.neo4j_username
+        password = neo4j_password or settings.neo4j_password
+        
+        logger.info(f"Connecting to Neo4j at {uri} with user {user}")
+        self.driver = GraphDatabase.driver(uri, auth=(user, password))
 
     def close(self):
         self.driver.close()

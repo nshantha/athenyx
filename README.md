@@ -106,6 +106,9 @@ Ensure C/C++ compiler prerequisite is met.
 
 Run in the project root:
 ```bash
+brew install python@3.12
+export PATH="/usr/local/opt/python@3.12/bin:$PATH"
+poetry env use python3.12
 poetry install
 ```
 

@@ -8,25 +8,25 @@ class Settings(BaseSettings):
     Application settings loaded from environment variables.
     """
     # Neo4j Connection
-    neo4j_uri: str = "bolt://localhost:7687"
-    neo4j_username: str = "neo4j"
-    neo4j_password: str = "password"
+    neo4j_uri: str = Field(..., env="NEO4J_URI")
+    neo4j_username: str = Field(..., env="NEO4J_USERNAME")
+    neo4j_password: str = Field(..., env="NEO4J_PASSWORD")
 
     # OpenAI API Key
     openai_api_key: str = Field(..., env="OPENAI_API_KEY") # Make it required
 
     # Embedding Model
-    openai_embedding_model: str = "text-embedding-3-small"
-    embedding_dimensions: int = 1536
+    openai_embedding_model: str = Field(..., env="OPENAI_EMBEDDING_MODEL")
+    embedding_dimensions: int = Field(..., env="EMBEDDING_DIMENSIONS")
 
     # LLM Model for Generation (Used in Phase 3)
-    openai_llm_model: str = "gpt-4o-mini"
+    openai_llm_model: str = Field(..., env="OPENAI_LLM_MODEL")
 
     # Web Search Tool (Used in Phase 3)
     tavily_api_key: str | None = None
 
     # Backend API URL (Used by UI in Phase 4)
-    backend_api_url: str = "http://localhost:8000"
+    backend_api_url: str = Field(..., env="BACKEND_API_URL")
 
     # Logging Level
     log_level: str = "INFO"

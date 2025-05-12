@@ -27,7 +27,12 @@ class AgentState(TypedDict):
 
 # --- LLM Definition ---
 # Use a model that supports tool calling with streaming enabled
-llm = ChatOpenAI(model=settings.openai_llm_model, temperature=0, streaming=True)
+llm = ChatOpenAI(
+    api_key=settings.openai_api_key, 
+    model=settings.openai_llm_model, 
+    temperature=0, 
+    streaming=True
+)
 # Bind the tools to the LLM instance
 llm_with_tools = llm.bind_tools(available_tools)
 
