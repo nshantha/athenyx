@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 from app.api import endpoints # Import the router
+from app.api import repository # Import the repository router
 from app.core.logging_conf import setup_logging # Import logging setup
 from app.db.neo4j_manager import db_manager # Import DB manager for startup/shutdown
 
@@ -45,8 +46,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Include the API router
+# Include the API routers
 app.include_router(endpoints.router, prefix="/api") # Add a /api prefix
+app.include_router(repository.router, prefix="/api") # Add repository endpoints
 
 # Import agent_executor here to ensure graph compilation check in lifespan works
 from app.agent import agent_executor

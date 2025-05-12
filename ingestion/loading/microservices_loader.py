@@ -52,10 +52,10 @@ class MicroservicesLoader:
             tx.run(query, **rel)
 
     def create_api_endpoint(self, tx, endpoint_info: Dict[str, Any]):
-        """Creates an APIEndpoint node and links it to a service."""
+        """Creates an ApiEndpoint node and links it to a service."""
         query = """
         MATCH (s:Service {name: $service_name})
-        MERGE (e:APIEndpoint {
+        MERGE (e:ApiEndpoint {
             path: $path,
             method: $method,
             protocol: $protocol
@@ -145,7 +145,7 @@ class MicroservicesLoader:
         with self.driver.session() as session:
             # Create indices for frequently queried properties
             session.run("CREATE INDEX service_name IF NOT EXISTS FOR (s:Service) ON (s.name)")
-            session.run("CREATE INDEX endpoint_path IF NOT EXISTS FOR (e:APIEndpoint) ON (e.path)")
+            session.run("CREATE INDEX endpoint_path IF NOT EXISTS FOR (e:ApiEndpoint) ON (e.path)")
             session.run("CREATE INDEX model_name IF NOT EXISTS FOR (m:DataModel) ON (m.name)")
             session.run("CREATE INDEX config_key IF NOT EXISTS FOR (c:Configuration) ON (c.key)")
             session.run("CREATE INDEX interface_name IF NOT EXISTS FOR (i:ServiceInterface) ON (i.name)") 

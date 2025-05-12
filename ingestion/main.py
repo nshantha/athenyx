@@ -7,11 +7,17 @@ from typing import Dict, Any, List
 import yaml
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import re
 
 # Configure logging early
 # You might want a more sophisticated setup using app.core.logging_conf later
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Debug env vars (using direct os.getenv for comparison)
+logger.info("Checking environment variables directly from OS:")
+logger.info(f"INGEST_REPO_URL (os.getenv) = {os.getenv('INGEST_REPO_URL')}")
+logger.info(f"NEO4J_URI (os.getenv) = {os.getenv('NEO4J_URI')}")
 
 # Import necessary components AFTER basic logging is configured
 from ingestion.config import ingestion_settings, get_target_extensions
@@ -23,6 +29,11 @@ from ingestion.loading.neo4j_loader import Neo4jLoader
 from ingestion.loading.microservices_loader import MicroservicesLoader  # Fixed import path
 from app.db.neo4j_manager import db_manager # Import the instantiated manager
 from app.core.config import settings # For embedding dimensions
+
+# Debug loaded settings
+logger.info("Settings loaded via Pydantic:")
+logger.info(f"ingestion_settings.ingest_repo_url = {ingestion_settings.ingest_repo_url}")
+logger.info(f"settings.neo4j_uri = {settings.neo4j_uri}")
 
 async def ingestion_pipeline():
     """Runs the full ingestion pipeline."""
@@ -206,8 +217,22 @@ def run_ingestion():
         logger.critical(f"Unhandled exception in ingestion pipeline: {e}", exc_info=True)
 
 class MicroservicesIngestion:
-    def __init__(self, repo_path: str, neo4j_uri: str = None, neo4j_user: str = None, neo4j_password: str = None):
-        self.repo_path = repo_path
+    def __init__(self, repo_path: str, neo4j_uri: str = None, neo4j_user: str = None, neo4j_password: str = None, repo_url: str = None):
+        # Get repo URL from parameters or environment variables to avoid hardcoding
+        self.repo_url = repo_url or os.getenv("INGEST_REPO_URL") or ingestion_settings.ingest_repo_url
+        logger.info(f"Using microservices repository URL: {self.repo_url}")
+        
+        # If repo_path is provided, use it directly
+        if repo_path and repo_path != "./cloned_repo" and not repo_path.endswith("/cloned_repo"):
+            self.repo_path = repo_path
+            logger.info(f"Using provided repository path: {self.repo_path}")
+        else:
+            # Use the same directory as ingestion_settings to avoid duplicates
+            # Get repo name from ingestion_settings to be consistent
+            repo_name = ingestion_settings.extract_repo_name(self.repo_url)
+            self.repo_path = os.path.join(ingestion_settings.base_clone_dir, repo_name)
+            logger.info(f"Using consistent repository path: {self.repo_path}")
+            
         self.loader = MicroservicesLoader(neo4j_uri, neo4j_user, neo4j_password)
         self.parser = TreeSitterParser()
         
@@ -217,22 +242,48 @@ class MicroservicesIngestion:
         # Ensure repository exists
         self.clone_repository()
         self.load_service_metadata()
+    
+    @staticmethod
+    def _extract_repo_name(repo_url: str) -> str:
+        """Extract repository name from URL."""
+        # Simple approach: use the last part of the URL without the .git extension
+        if not repo_url:
+            return "unknown_repo"
+            
+        # Remove trailing slashes and .git extension
+        clean_url = repo_url.rstrip('/').rstrip('.git')
+        
+        # Get the last part of the URL (the repo name)
+        parts = clean_url.split('/')
+        repo_name = parts[-1]
+        
+        # Replace any problematic characters with underscores
+        repo_name = repo_name.replace('.', '_').replace('-', '_')
+        
+        return repo_name
 
     def clone_repository(self):
         """Clone the microservices-demo repository if it doesn't exist."""
+        # Check if repository URL is set
+        if not self.repo_url:
+            logger.error("No repository URL provided and none found in environment variables")
+            raise ValueError("Repository URL is required for cloning. Please provide a valid URL.")
+            
+        logger.info(f"Checking repository path: {self.repo_path}")
         if not os.path.exists(self.repo_path):
             logger.info(f"Creating directory: {self.repo_path}")
-            os.makedirs(self.repo_path)
+            os.makedirs(self.repo_path, exist_ok=True)
         
-        src_path = os.path.join(self.repo_path, "src")
-        if not os.path.exists(src_path):
-            logger.info("Cloning microservices-demo repository...")
+        # Check if repo is already cloned by looking for .git
+        git_dir = os.path.join(self.repo_path, ".git")
+        if not os.path.exists(git_dir):
+            logger.info(f"Cloning repository to {self.repo_path}...")
             import subprocess
             try:
                 # Clone the repository
                 subprocess.run([
                     "git", "clone", "--depth", "1",
-                    "https://github.com/GoogleCloudPlatform/microservices-demo.git",
+                    self.repo_url,
                     self.repo_path
                 ], check=True)
                 logger.info("Repository cloned successfully")
@@ -345,21 +396,35 @@ class MicroservicesIngestion:
 
     def process_all_services(self):
         """Process all microservices in the repository."""
+        # Check if src directory exists
         src_path = os.path.join(self.repo_path, "src")
         if not os.path.exists(src_path):
-            raise ValueError(f"Source directory not found: {src_path}")
+            logger.warning(f"Source directory not found at: {src_path}")
+            # Try to find microservices at the repository root
+            logger.info(f"Looking for microservices at repository root: {self.repo_path}")
+            src_path = self.repo_path
 
         # Create indices for better performance
         self.loader.create_indices()
 
-        # Process each service directory in parallel
+        # Process each directory that looks like a service
         with ThreadPoolExecutor() as executor:
             future_to_service = {}
             for service_dir in os.listdir(src_path):
                 service_path = os.path.join(src_path, service_dir)
                 if os.path.isdir(service_path):
-                    future = executor.submit(self.process_service, service_path, service_dir)
-                    future_to_service[future] = service_dir
+                    # Check if this looks like a service directory (contains code files)
+                    has_code_files = False
+                    for root, _, files in os.walk(service_path):
+                        if any(file.endswith(('.py', '.go', '.cs', '.java', '.js', '.ts')) for file in files):
+                            has_code_files = True
+                            break
+                    
+                    if has_code_files:
+                        future = executor.submit(self.process_service, service_path, service_dir)
+                        future_to_service[future] = service_dir
+                    else:
+                        logger.debug(f"Skipping directory without code files: {service_dir}")
 
             for future in as_completed(future_to_service):
                 service_name = future_to_service[future]
@@ -389,6 +454,10 @@ class EnterpriseKnowledgeSystem:
         Args:
             config_path: Path to configuration file (optional)
         """
+        # Debug logging for environment variables and settings
+        logger.info(f"Debug init: INGEST_REPO_URL from env: '{os.getenv('INGEST_REPO_URL')}'")
+        logger.info(f"Debug init: ingestion_settings.ingest_repo_url: '{ingestion_settings.ingest_repo_url}'")
+        
         self.config = self._load_config(config_path)
         self.db_manager = db_manager  # Use the existing manager
         self.knowledge_sources = []
@@ -445,7 +514,7 @@ class EnterpriseKnowledgeSystem:
             ]
             
             for query in queries:
-                await self.db_manager.execute_query(query)
+                await self.db_manager.run_query(query)
                 
             logger.info("Cross-repository schema created successfully")
         except Exception as e:
@@ -519,12 +588,15 @@ class EnterpriseKnowledgeSystem:
     
     def _extract_service_name(self, repo_url):
         """Extract service name from repository URL."""
-        # Example: https://github.com/org/payment-service.git -> payment-service
-        try:
-            parts = repo_url.rstrip('/').rstrip('.git').split('/')
-            return parts[-1]
-        except:
+        if not repo_url:
             return "unknown-service"
+            
+        # Remove trailing slashes and .git extension
+        clean_url = repo_url.rstrip('/').rstrip('.git')
+        
+        # Get the last part of the URL (the repo name)
+        parts = clean_url.split('/')
+        return parts[-1]
     
     async def _create_repository_node(self, repo_url, service_name, description):
         """Create a Repository node in the graph."""
@@ -542,7 +614,7 @@ class EnterpriseKnowledgeSystem:
         }
         
         try:
-            await self.db_manager.execute_query(query, params)
+            await self.db_manager.run_query(query, params)
             logger.info(f"Created/updated Repository node for {repo_url}")
         except Exception as e:
             logger.error(f"Failed to create Repository node: {e}")
@@ -564,17 +636,123 @@ class EnterpriseKnowledgeSystem:
             file_path = file_data.get("path", "")
             language = file_data.get("language", "")
             
-            # Check for API definition files
-            if any(pattern in file_path.lower() for pattern in [
-                "controller", "route", "api", "endpoint", "service", "handler"
+            # Skip files that are clearly not API endpoints
+            lower_path = file_path.lower()
+            if any(non_api_pattern in lower_path for non_api_pattern in [
+                "test", "mock", "logger", "logging", "util", "helper", "exception",
+                "config", "constant", "settings", "setup", "admin"
             ]):
+                continue
+                
+            # More precise API file pattern matching
+            is_api_file = any(api_pattern in lower_path for api_pattern in [
+                "controller", "rest", "api", "endpoint", "route", 
+                "resource", "service/api", "web/", "http", "handler"
+            ])
+            
+            # Framework-specific patterns
+            is_framework_controller = False
+            code_content = file_data.get("code", "")
+            
+            # Spring Boot patterns
+            if language == "java":
+                # Look for Spring annotations
+                is_framework_controller = any(annotation in code_content for annotation in [
+                    "@RestController", "@Controller", "@RequestMapping", 
+                    "@GetMapping", "@PostMapping", "@PutMapping", "@DeleteMapping",
+                    "@PatchMapping"
+                ])
+            
+            # Flask/FastAPI patterns
+            elif language == "python":
+                is_framework_controller = any(pattern in code_content for pattern in [
+                    "@app.route", "flask.route", "@blueprint", "@api_view", 
+                    "@app.get", "@app.post", "@router", "fastapi"
+                ])
+            
+            # Express.js patterns
+            elif language in ["javascript", "typescript"]:
+                is_framework_controller = any(pattern in code_content for pattern in [
+                    "app.get", "app.post", "router.get", "router.post", 
+                    "express.Router", "app.use", "route.use"
+                ])
+            
+            # Only process files that are API-related
+            if is_api_file or is_framework_controller:
                 # Extract function definitions that might be API endpoints
                 functions = file_data.get("functions", [])
+                
+                # If no functions are detected but it's a framework controller, create a placeholder
+                if not functions and is_framework_controller:
+                    # Extract path from mapping annotations
+                    import re
+                    path_match = None
+                    
+                    if language == "java":
+                        path_match = re.search(r'@RequestMapping\s*\(\s*(?:value\s*=\s*)?["\'](.*?)["\']\s*\)', code_content)
+                    elif language == "python":
+                        path_match = re.search(r'@app\.route\s*\(\s*["\']([^"\']+)["\']', code_content)
+                    
+                    path = path_match.group(1) if path_match else "/"
+                    
+                    # Use filename as endpoint name
+                    endpoint_name = os.path.basename(file_path).replace("." + language, "")
+                    
+                    api_definitions.append({
+                        "name": endpoint_name,
+                        "file_path": file_path,
+                        "repo_url": repo_url,
+                        "language": language,
+                        "parameters": [],
+                        "return_type": "unknown",
+                        "docstring": f"Framework controller with path: {path}",
+                        "api_path": path
+                    })
+                
                 for func in functions:
-                    # Simple heuristic for API endpoints
-                    if any(method in func.get("name", "").lower() for method in [
-                        "get", "post", "put", "delete", "patch"
+                    # More sophisticated heuristic for API endpoints
+                    func_name = func.get("name", "").lower()
+                    func_code = func.get("code", "")
+                    
+                    # Skip functions that are likely not API endpoints
+                    if any(non_api_pattern in func_name for non_api_pattern in [
+                        "log", "init", "setup", "config", "util", "helper", "private", "internal"
                     ]):
+                        continue
+                    
+                    # Check for HTTP method patterns in function name
+                    is_http_method = any(method in func_name for method in [
+                        "get", "post", "put", "delete", "patch", "handle", "process", "request", "api", "endpoint"
+                    ])
+                    
+                    # Framework-specific annotations
+                    has_mapping = False
+                    api_path = "/"
+                    
+                    if language == "java" and func_code:
+                        has_mapping = any(annotation in func_code for annotation in [
+                            "@GetMapping", "@PostMapping", "@PutMapping", 
+                            "@DeleteMapping", "@PatchMapping", "@RequestMapping"
+                        ])
+                        
+                        # Try to extract the path
+                        import re
+                        path_match = re.search(r'@\w+Mapping\s*\(\s*(?:value\s*=\s*)?["\'](.*?)["\']\s*\)', func_code)
+                        if path_match:
+                            api_path = path_match.group(1)
+                    
+                    elif language == "python" and func_code:
+                        has_mapping = "@" in func_code and any(pattern in func_code for pattern in [
+                            "route", "api_view", "get", "post", "path"
+                        ])
+                    
+                    elif language in ["javascript", "typescript"] and func_code:
+                        has_mapping = any(pattern in func_code for pattern in [
+                            "app.get", "app.post", "router.get", "router.post", 
+                            "res.json", "res.send", "response.json", "request.body"
+                        ])
+                    
+                    if is_http_method or has_mapping:
                         api_definitions.append({
                             "name": func.get("name", ""),
                             "file_path": file_path,
@@ -582,16 +760,24 @@ class EnterpriseKnowledgeSystem:
                             "language": language,
                             "parameters": func.get("parameters", []),
                             "return_type": func.get("return_type", "unknown"),
-                            "docstring": func.get("docstring", "")
+                            "docstring": func.get("docstring", ""),
+                            "api_path": api_path
                         })
             
-            # Check for data model definitions
-            if any(pattern in file_path.lower() for pattern in [
-                "model", "schema", "dto", "entity", "domain"
-            ]):
+            # Check for data model definitions (more precise criteria)
+            if any(model_pattern in lower_path for model_pattern in [
+                "model", "schema", "dto", "entity", "domain/", "data/", "pojo"
+            ]) and not "test" in lower_path:
                 # Extract class definitions that might be data models
                 classes = file_data.get("classes", [])
                 for cls in classes:
+                    # Skip obvious non-model classes
+                    cls_name = cls.get("name", "").lower()
+                    if any(non_model_pattern in cls_name for non_model_pattern in [
+                        "test", "factory", "manager", "service", "util", "helper", "exception"
+                    ]):
+                        continue
+                        
                     data_models.append({
                         "name": cls.get("name", ""),
                         "file_path": file_path,
@@ -608,8 +794,15 @@ class EnterpriseKnowledgeSystem:
         """Load API definitions and data models into the graph database."""
         # Load API endpoints
         for api in api_definitions:
+            # Use a query that resolves both capitalization variants
             query = """
             MATCH (r:Repository {url: $repo_url})
+            
+            // First delete any existing nodes with inconsistent capitalization
+            OPTIONAL MATCH (old:ApiEndpoint {file_path: $file_path, repo_url: $repo_url})
+            DETACH DELETE old
+            
+            // Create the node with our preferred capitalization
             MERGE (a:ApiEndpoint {
                 name: $name,
                 file_path: $file_path,
@@ -619,7 +812,8 @@ class EnterpriseKnowledgeSystem:
                 a.parameters = $parameters,
                 a.return_type = $return_type,
                 a.docstring = $docstring,
-                a.service_name = $service_name
+                a.service_name = $service_name,
+                a.api_path = $api_path
             MERGE (a)-[:BELONGS_TO]->(r)
             """
             params = {
@@ -630,11 +824,12 @@ class EnterpriseKnowledgeSystem:
                 "parameters": json.dumps(api["parameters"]),
                 "return_type": api["return_type"],
                 "docstring": api["docstring"],
-                "service_name": service_name
+                "service_name": service_name,
+                "api_path": api.get("api_path", "/")
             }
             
             try:
-                await self.db_manager.execute_query(query, params)
+                await self.db_manager.run_query(query, params)
             except Exception as e:
                 logger.error(f"Failed to create ApiEndpoint node: {e}")
         
@@ -666,21 +861,28 @@ class EnterpriseKnowledgeSystem:
             }
             
             try:
-                await self.db_manager.execute_query(query, params)
+                await self.db_manager.run_query(query, params)
             except Exception as e:
                 logger.error(f"Failed to create DataModel node: {e}")
     
-    async def ingest_microservices(self, repo_path=None):
+    async def ingest_microservices(self, repo_path=None, repo_url=None):
         """
         Analyze microservices architecture and relationships.
         
         Args:
             repo_path: Path to repository with microservices
+            repo_url: URL of the microservices repository to clone
         """
         repo_path = repo_path or os.getenv("REPO_PATH", "./cloned_repo")
         
         try:
-            ingestion = MicroservicesIngestion(repo_path)
+            ingestion = MicroservicesIngestion(
+                repo_path=repo_path,
+                neo4j_uri=None,
+                neo4j_user=None, 
+                neo4j_password=None,
+                repo_url=repo_url
+            )
             ingestion.process_all_services()
             logger.info(f"Successfully analyzed microservices architecture from {repo_path}")
             
@@ -721,7 +923,7 @@ class EnterpriseKnowledgeSystem:
             RETURN count(*) as relationships
             """
             
-            result = await self.db_manager.execute_query(query)
+            result = await self.db_manager.run_query(query)
             count = result[0]['relationships'] if result else 0
             logger.info(f"Identified {count} potential cross-service API dependencies")
             
@@ -736,7 +938,7 @@ class EnterpriseKnowledgeSystem:
             RETURN count(*) as relationships
             """
             
-            result = await self.db_manager.execute_query(query)
+            result = await self.db_manager.run_query(query)
             count = result[0]['relationships'] if result else 0
             logger.info(f"Identified {count} potential shared data models across services")
             
@@ -817,9 +1019,27 @@ class EnterpriseKnowledgeSystem:
         for repo_config in self.config.get("repositories", []):
             await self.ingest_code_repository(repo_config)
         
-        # Always process microservices architecture
-        repo_path = self.config.get("microservices_repo_path") or os.getenv("REPO_PATH", "./cloned_repo")
-        await self.ingest_microservices(repo_path)
+        # Always process microservices architecture if configured
+        if self.config.get("microservices_analysis", True):
+            # Use specified path or determine from default location
+            repo_path = self.config.get("microservices_repo_path")
+            # Debug logging
+            logger.info(f"Debug: INGEST_REPO_URL environment variable value: '{os.getenv('INGEST_REPO_URL')}'")
+            logger.info(f"Debug: ingestion_settings.ingest_repo_url value: '{ingestion_settings.ingest_repo_url}'")
+            repo_url = self.config.get("microservices_repo_url") or os.getenv("INGEST_REPO_URL") or ingestion_settings.ingest_repo_url
+            logger.info(f"Debug: Resolved repo_url for microservices: '{repo_url}'")
+            
+            # Skip microservices analysis if no URL is provided
+            if not repo_url:
+                logger.warning("Skipping microservices analysis: No repository URL provided")
+            else:
+                # If no explicit repo path but we have a URL, use the same path as ingestion_settings
+                if not repo_path:
+                    repo_name = ingestion_settings.extract_repo_name(repo_url)
+                    repo_path = os.path.join(ingestion_settings.base_clone_dir, repo_name)
+                    logger.info(f"Using consistent repository path for microservices: {repo_path}")
+                
+                await self.ingest_microservices(repo_path=repo_path, repo_url=repo_url)
         
         # Process documentation sources
         await self.ingest_documentation(self.config.get("documentation_sources", []))
@@ -858,12 +1078,13 @@ class EnterpriseKnowledgeSystem:
             RETURN count(*) as relationships
             """
             
-            result = await self.db_manager.execute_query(query)
+            result = await self.db_manager.run_query(query)
             count = result[0]['relationships'] if result else 0
             logger.info(f"Identified {count} cross-repository API contract dependencies")
             
         except Exception as e:
             logger.error(f"Error during cross-repository relationship analysis: {e}")
+
 
 async def comprehensive_ingestion_pipeline(config_path=None):
     """
@@ -891,6 +1112,10 @@ def main():
     """Main entry point for CLI usage."""
     import argparse
     
+    # Debug environment variables
+    logger.info("Debugging environment variables:")
+    logger.info(f"INGEST_REPO_URL = {os.getenv('INGEST_REPO_URL')}")
+    
     parser = argparse.ArgumentParser(
         description="Enterprise AI Software Knowledge System Ingestion"
     )
@@ -910,6 +1135,11 @@ def main():
         nargs='+',
         help="List of repository URLs to ingest (space-separated)"
     )
+    parser.add_argument(
+        "--microservices-repo", 
+        type=str, 
+        help="URL of microservices repository to analyze"
+    )
     
     args = parser.parse_args()
     
@@ -921,11 +1151,14 @@ def main():
     
     # Create a config dictionary if repo_path or repos are provided
     config = None
-    if args.repo_path or args.repos:
+    if args.repo_path or args.repos or args.microservices_repo:
         config = {}
         
         if args.repo_path:
             config["microservices_repo_path"] = args.repo_path
+        
+        if args.microservices_repo:
+            config["microservices_repo_url"] = args.microservices_repo
             
         if args.repos:
             config["repositories"] = []

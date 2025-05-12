@@ -1,28 +1,38 @@
-# AI-Powered Software Knowledge Graph MVP
+# Athenyx - Enterprise AI Knowledge Platform
 
-This project implements an AI-Powered Knowledge Graph system to index, connect, and query software project information (code structure, semantics) using Neo4j, LangChain, LangGraph, Tree-sitter, FastAPI, and Streamlit.
+Athenyx is an AI-Powered Knowledge Graph system that indexes, connects, and queries software project information (code structure, semantics) using Neo4j, LangChain, LangGraph, Tree-sitter, FastAPI, and Streamlit.
 
-**Vision:** Empower engineering teams with instant, contextual insights into their software systems.
+**Vision:** Empower engineering teams with instant, contextual insights into their software systems across multiple repositories.
 
 ## Current Features
 
-* Ingests Git repositories
-* Performs basic structural parsing (Files, Functions, Classes/Structs/Interfaces) for multiple languages:
-  * Python
-  * Go
-  * C#
-  * Java
-  * JavaScript
-* Chunks code text
-* Generates vector embeddings for code chunks (using OpenAI API or configurable for local models)
-* Loads structural data and vector embeddings into Neo4j (Graph + Vector Index)
-* Provides a FastAPI backend API (`/api/query`)
-* Features a LangGraph agent orchestrating:
-  * Retrieval-Augmented Generation (RAG) using semantic vector search on code chunks
-  * Web search via Tavily (optional, requires API key)
-* Streams the agent's final answer token-by-token
-* Offers a Streamlit web UI for interaction
-* Includes Docker Compose setup for easier deployment
+* **Multi-Repository Management:**
+  * Add and manage multiple code repositories in one knowledge graph
+  * Switch active repository context for targeted queries
+  * Track ingestion progress for newly added repositories
+* **Advanced Code Analysis:**
+  * Ingests Git repositories (with branch selection)
+  * Performs structural parsing (Files, Functions, Classes/Structs/Interfaces) for multiple languages:
+    * Python
+    * Go
+    * C#
+    * Java
+    * JavaScript
+* **Knowledge Processing:**
+  * Chunks code into semantic units
+  * Generates vector embeddings for code chunks (using OpenAI API or configurable for local models)
+  * Loads structural data and vector embeddings into Neo4j (Graph + Vector Index)
+* **Intelligent Interface:**
+  * Provides a FastAPI backend API (`/api/query`)
+  * Features a LangGraph agent orchestrating:
+    * Retrieval-Augmented Generation (RAG) using semantic vector search on code chunks
+    * Context-aware responses based on active repository
+    * Web search via Tavily (optional, requires API key)
+  * Streams the agent's final answer token-by-token
+  * Offers a streamlined Streamlit web UI for interaction
+* **Deployment Options:**
+  * Includes Docker Compose setup for easier deployment
+  * Supports local development environment
 
 ## Architecture Overview
 
@@ -64,7 +74,7 @@ This project implements an AI-Powered Knowledge Graph system to index, connect, 
 
 ```bash
 git clone <your-repo-url> # Or the URL of this project
-cd ai-knowledge-graph     # Or your project directory name
+cd enterprise-ai     # Or your project directory name
 ```
 
 ### 2. Configure Environment (.env file)
@@ -93,7 +103,7 @@ Edit the `.env` file with your specific settings:
 * `EMBEDDING_DIMENSIONS`: Crucial. Set this to match your embedding model (e.g., 1536 for OpenAI `text-embedding-3-small`, 384 for `all-MiniLM-L6-v2`, 768 for `bge-base-en-v1.5`). The Neo4j index depends on this.
 * `OPENAI_EMBEDDING_MODEL`: (If using OpenAI embeddings) e.g., `text-embedding-3-small`
 * `OPENAI_LLM_MODEL`: The model for the agent, e.g., `gpt-4o-mini`
-* `INGEST_REPO_URL`: The Git URL of the repository you want to index (e.g., `https://github.com/GoogleCloudPlatform/microservices-demo.git`)
+* `INGEST_REPO_URL`: Optional default Git URL of a repository you want to index (e.g., `https://github.com/GoogleCloudPlatform/microservices-demo.git`)
 * `INGEST_TARGET_EXTENSIONS`: Comma-separated list of file extensions to process (e.g., `.py,.go,.cs,.java,.js`)
 * `BACKEND_API_URL`:
   * For Docker: Use `http://backend:8000` (the frontend container connects to the backend container)
@@ -132,15 +142,6 @@ docker-compose up --build -d
 
 Wait ~1 minute for Neo4j to initialize on the first run. Check status: `docker-compose ps` or logs: `docker-compose logs neo4j`.
 
-#### Run Data Ingestion
-
-Execute the ingestion script inside the backend container:
-```bash
-docker-compose exec backend poetry run python -m ingestion.main
-```
-
-Monitor the terminal output for progress (cloning, parsing, chunking, embedding, loading) and any errors. This step populates the Neo4j container.
-
 #### Access Services
 
 * Frontend UI: http://localhost:8501
@@ -165,33 +166,43 @@ Requires managing the Neo4j instance and Python processes separately.
 
 3. **Configure .env**: Make sure `NEO4J_URI` points to your local/cloud Neo4j instance and `BACKEND_API_URL` is `http://localhost:8000`.
 
-4. **Run Data Ingestion**:
-   * Open a terminal in the project root
-   * Run: `poetry run python -m ingestion.main`
-   * Wait for completion and check logs/Neo4j
-
-5. **Run Backend API**:
+4. **Run Backend API**:
    * Open a new terminal
    * Run: `poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
    * Keep this terminal running
 
-6. **Run Frontend UI**:
+5. **Run Frontend UI**:
    * Open a third terminal
    * Run: `poetry run streamlit run ui/app.py --server.port 8501`
    * Keep this terminal running
 
-7. **Access Services**:
+6. **Access Services**:
    * Frontend UI: http://localhost:8501
    * Backend API Docs: http://localhost:8000/docs
    * Neo4j Browser: Access your local/cloud instance directly via its specific URL/port
 
-## Usage
+## Using Athenyx
 
-1. Ensure all required services are running (either via Docker or locally)
-2. Ensure the data ingestion has successfully completed for your target repository
-3. Navigate to the Streamlit UI (usually http://localhost:8501)
-4. Enter your questions about the indexed codebase into the input box and click "Ask AI Assistant"
-5. Observe the streamed answer
+1. **Adding Repositories**:
+   * Navigate to the Streamlit UI (usually http://localhost:8501)
+   * In the sidebar, click "➕ Add New Repository"
+   * Enter the repository URL (e.g., https://github.com/GoogleCloudPlatform/microservices-demo.git)
+   * Optionally specify a branch and description
+   * Click "Add Repository" and wait for ingestion to complete
+
+2. **Managing Repositories**:
+   * View all indexed repositories in the sidebar dropdown
+   * Set the active repository by selecting it and clicking "Set as Active"
+   * The active repository context is displayed at the top of the chat interface
+
+3. **Querying the Knowledge Graph**:
+   * Enter questions about the active repository in the chat input
+   * The AI assistant will respond with information scoped to the active repository
+   * Questions can be about architecture, code structure, functionality, or specific files/components
+
+4. **Starting New Conversations**:
+   * Click "New Chat" to reset the conversation history
+   * Repository context is maintained across new chats
 
 ## Development
 
@@ -207,6 +218,7 @@ Requires managing the Neo4j instance and Python processes separately.
 * **NameResolutionError: Failed to resolve 'backend' (UI)**: You are likely running the UI locally but `BACKEND_API_URL` in `.env` is set to `http://backend:8000` (for Docker). Change it to `http://localhost:8000` for local runs.
 * **Embedding Dimension Errors**: Ensure `EMBEDDING_DIMENSIONS` in `.env` matches the output dimension of your chosen embedding model. If you change models/dimensions, you may need to DROP the old vector index in Neo4j (`DROP INDEX code_chunk_embeddings`) before re-running ingestion.
 * **Rate Limit Errors (OpenAI)**: The embedding step may take time or fail if you process large repositories. Solutions: Add delays (`ingestion/processing/embedding.py`), filter input files (`ingestion/main.py`), request higher OpenAI limits, or switch to a local embedding model.
+* **Repository Not Showing After Adding**: The UI automatically refreshes after adding a repository, but you can manually refresh by clicking "Check Status" in the ingestion progress area.
 
 ## Project Structure (Brief)
 
@@ -229,3 +241,5 @@ Requires managing the Neo4j instance and Python processes separately.
 * Integrate Confluence/Jira data sources
 * Improve UI/UX (display context, chat history, graph visualizations)
 * Optimize performance (embedding speed, query speed)
+* Enhanced repository comparison and cross-repository analysis
+* Team collaboration features (shared notes, insights)

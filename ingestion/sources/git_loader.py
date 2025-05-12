@@ -2,6 +2,7 @@
 import os
 import shutil
 import logging
+import re
 from git import Repo, GitCommandError, InvalidGitRepositoryError
 from typing import List, Tuple, Optional
 
@@ -10,13 +11,36 @@ logger = logging.getLogger(__name__)
 class GitLoader:
     def __init__(self, repo_url: str, clone_dir: str, branch: Optional[str] = None):
         self.repo_url = repo_url
-        self.clone_dir = clone_dir
+        
+        # Use repository-specific clone directory if clone_dir is a base directory
+        if os.path.basename(clone_dir) in ["cloned_repo", "repos"]:
+            repo_name = self._extract_repo_name(repo_url)
+            self.clone_dir = os.path.join(os.path.dirname(clone_dir), "repos", repo_name)
+            logger.info(f"Using repository-specific clone directory: {self.clone_dir}")
+        else:
+            self.clone_dir = clone_dir
+            
         self.branch = branch
         self.repo: Optional[Repo] = None
+
+    @staticmethod
+    def _extract_repo_name(repo_url: str) -> str:
+        """Extract repository name from URL."""
+        # Handle different URL formats
+        # Example: https://github.com/org/repo.git or git@github.com:org/repo.git
+        match = re.search(r'[:/]([^/]+/[^/]+?)(?:\.git)?$', repo_url)
+        if match:
+            # Replace any remaining slashes with underscores for a valid directory name
+            repo_name = match.group(1).replace('/', '_')
+            return repo_name
+        return "unknown_repo"
 
     def _ensure_repo_cloned_or_updated(self) -> Repo:
         """Clones the repo if not present, or opens and pulls updates if it exists."""
         try:
+            # Make sure parent directory exists
+            os.makedirs(os.path.dirname(self.clone_dir), exist_ok=True)
+            
             if os.path.exists(self.clone_dir):
                 logger.info(f"Repository directory already exists at {self.clone_dir}. Opening.")
                 try:

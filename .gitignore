@@ -149,6 +149,8 @@ docker-compose.override.yml
 # Data directories
 neo4j_data/
 ingestion/cloned_repo/ # Temporary clone location
+ingestion/repos/ # Root-level cloned repository directory
 cloned_repo/ # Root-level cloned repository directory
 
 genv/
+

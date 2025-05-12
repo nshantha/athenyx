@@ -197,7 +197,7 @@ class Neo4jManager:
             List of result dictionaries with text and path information
         """
         logger.info(f"Performing specialized high-level query for topic: {topic}")
-        
+                
         # No FAQ system - always query the database directly
         
         # Customize query based on topic
@@ -207,7 +207,7 @@ class Neo4jManager:
             query = """
             MATCH (cc:CodeChunk)
             WHERE (
-                cc.text CONTAINS 'service' OR 
+                cc.text CONTAINS 'service' OR
                 cc.text CONTAINS 'microservice' OR
                 cc.text CONTAINS 'architecture'
             )
@@ -265,7 +265,7 @@ class Neo4jManager:
                     ELSE 1.0
                 END AS priority
             ORDER BY priority DESC
-            LIMIT 10
+            LIMIT 15
             """
         else:
             # Generic topic search
@@ -415,6 +415,141 @@ class Neo4jManager:
         except Exception as e:
             logger.error(f"Error during knowledge graph query: {e}", exc_info=True)
             return []
+
+    async def get_all_repositories(self) -> List[Dict[str, Any]]:
+        """
+        Retrieves all repositories from the database with their metadata.
+        
+        Returns:
+            List of dictionaries containing repository information
+        """
+        query = """
+        MATCH (r:Repository)
+        RETURN r.url as url, 
+               r.service_name as service_name, 
+               r.description as description,
+               r.last_indexed_commit_sha as last_commit,
+               r.last_indexed_timestamp as last_indexed
+        ORDER BY r.last_indexed_timestamp DESC
+        """
+        try:
+            results = await self.run_query(query)
+            # Convert timestamps to readable format
+            for repo in results:
+                if repo.get('last_indexed'):
+                    # Convert Neo4j timestamp (milliseconds since epoch) to readable date
+                    import datetime
+                    timestamp = repo['last_indexed'] / 1000  # Convert to seconds
+                    repo['last_indexed'] = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            return results
+        except Exception as e:
+            logger.error(f"Error retrieving repositories: {e}", exc_info=True)
+            return []
+            
+    async def set_active_repository(self, repo_url: str) -> bool:
+        """
+        Sets a repository as active/current for the application.
+        This is useful for managing context in multi-repository environments.
+        
+        Args:
+            repo_url: The URL of the repository to set as active
+            
+        Returns:
+            Boolean indicating success
+        """
+        # First check if the repository exists
+        check_query = """
+        MATCH (r:Repository {url: $repo_url})
+        RETURN r.url as url
+        """
+        
+        try:
+            result = await self.run_query(check_query, {"repo_url": repo_url})
+            if not result or len(result) == 0:
+                logger.warning(f"Repository not found: {repo_url}")
+                return False
+                
+            # Now reset all repositories' active status and set the specified one
+            update_query = """
+            // First reset all repositories by removing the property
+            MATCH (r:Repository)
+            REMOVE r.is_active
+            
+            // Then set the specified repository as active
+            WITH count(*) as _
+            MATCH (target:Repository {url: $repo_url})
+            SET target.is_active = true
+            RETURN target.url as url, target.service_name as service_name
+            """
+            
+            params = {"repo_url": repo_url}
+            result = await self.run_query(update_query, params)
+            success = len(result) > 0
+            
+            if success:
+                logger.info(f"Set active repository to: {repo_url}")
+            else:
+                logger.warning(f"Failed to set active repository - repository not found: {repo_url}")
+            return success
+        except Exception as e:
+            logger.error(f"Error setting active repository: {e}", exc_info=True)
+            return False
+            
+    async def get_active_repository(self) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves the currently active repository.
+        
+        Returns:
+            Dictionary with active repository information or None if no active repository
+        """
+        query = """
+        MATCH (r:Repository)
+        WHERE r.is_active IS NOT NULL AND r.is_active = true
+        RETURN r.url as url, 
+               r.service_name as service_name, 
+               r.description as description,
+               r.last_indexed_commit_sha as last_commit,
+               r.last_indexed_timestamp as last_indexed
+        """
+        
+        try:
+            results = await self.run_query(query)
+            if results and len(results) > 0:
+                # Convert timestamp to readable format if present
+                if results[0].get('last_indexed'):
+                    import datetime
+                    timestamp = results[0]['last_indexed'] / 1000  # Convert to seconds
+                    results[0]['last_indexed'] = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                return results[0]
+                
+            # If no active repository found, try to get the most recently indexed one
+            fallback_query = """
+            MATCH (r:Repository)
+            RETURN r.url as url, 
+                  r.service_name as service_name, 
+                  r.description as description,
+                  r.last_indexed_commit_sha as last_commit,
+                  r.last_indexed_timestamp as last_indexed
+            ORDER BY r.last_indexed_timestamp DESC
+            LIMIT 1
+            """
+            
+            fallback_results = await self.run_query(fallback_query)
+            if fallback_results and len(fallback_results) > 0:
+                # Convert timestamp to readable format if present
+                if fallback_results[0].get('last_indexed'):
+                    import datetime
+                    timestamp = fallback_results[0]['last_indexed'] / 1000  # Convert to seconds
+                    fallback_results[0]['last_indexed'] = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+                
+                # Set this as active for consistency
+                await self.set_active_repository(fallback_results[0]['url'])
+                return fallback_results[0]
+                
+            return None
+        except Exception as e:
+            logger.error(f"Error retrieving active repository: {e}", exc_info=True)
+            return None
 
 
 # Instantiate the manager for use in ingestion and the main app

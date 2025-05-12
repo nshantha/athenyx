@@ -1,17 +1,36 @@
 # ingestion/config.py
 import os
 from app.core.config import Settings, settings # Import base settings
+import re
+from pydantic import Field
 
 class IngestionSettings(Settings):
     """
     Specific settings for the ingestion pipeline, inheriting common settings.
     """
-    ingest_repo_url: str = "https://github.com/langchain-ai/langchain.git" # Example default
-    ingest_repo_branch: str | None = None # Ingest default branch if None
+    ingest_repo_url: str = Field(
+        default="https://github.com/langchain-ai/langchain.git",
+        env="INGEST_REPO_URL", 
+        description="Repository URL to clone and analyze"
+    )
+    ingest_repo_branch: str | None = Field(
+        default=None, 
+        env="INGEST_REPO_BRANCH",
+        description="Branch to analyze (default: main/master)"
+    )
+    # Microservices repository settings - removed in favor of single INGEST_REPO_URL
+    
     # Comma-separated list of file extensions to parse (e.g., ".py,.java")
-    ingest_target_extensions: str = ".py"
-    # Local path where the repository will be cloned
-    clone_dir: str = os.path.join(os.getcwd(), "ingestion", "cloned_repo")
+    ingest_target_extensions: str = Field(
+        default=".py", 
+        env="INGEST_TARGET_EXTENSIONS",
+        description="File extensions to analyze, comma-separated"
+    )
+    # Local path where repositories will be cloned
+    base_clone_dir: str = os.path.join(os.getcwd(), "ingestion", "repos")
+    
+    # Will be set dynamically based on the repository URL
+    clone_dir: str = ""
 
     # Chunking settings
     chunk_size: int = 1000
@@ -22,7 +41,44 @@ class IngestionSettings(Settings):
     neo4j_batch_size: int = 500 # Adjust based on performance
 
     # Flag to force re-indexing even if commit SHA hasn't changed
-    force_reindex: bool = False
+    force_reindex: bool = Field(
+        default=False,
+        env="FORCE_REINDEX",
+        description="Force reindexing even if repo hasn't changed"
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Set clone_dir based on repo URL
+        self.update_clone_dir()
+        
+    def update_clone_dir(self):
+        """Update clone directory based on the repository URL."""
+        if not self.ingest_repo_url:
+            self.clone_dir = os.path.join(self.base_clone_dir, "default_repo")
+            return
+            
+        # Extract repo name from URL
+        repo_name = self.extract_repo_name(self.ingest_repo_url)
+        self.clone_dir = os.path.join(self.base_clone_dir, repo_name)
+        
+    @staticmethod
+    def extract_repo_name(repo_url: str) -> str:
+        """Extract repository name from URL."""
+        if not repo_url:
+            return "unknown_repo"
+            
+        # Remove trailing slashes and .git extension
+        clean_url = repo_url.rstrip('/').rstrip('.git')
+        
+        # Get the last part of the URL (the repo name)
+        parts = clean_url.split('/')
+        repo_name = parts[-1]
+        
+        # Replace any problematic characters with underscores
+        repo_name = repo_name.replace('.', '_').replace('-', '_')
+        
+        return repo_name
 
     class Config:
         env_file = '.env'

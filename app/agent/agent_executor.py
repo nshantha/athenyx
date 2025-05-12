@@ -38,7 +38,7 @@ def format_code_block(text: str) -> str:
             return f"```{lang}\n{text}\n```"
     return text
 
-async def run_agent(query: str, conversation_history: str = None) -> AsyncGenerator[str, None]:
+async def run_agent(query: str, conversation_history: str = None, repository_context: str = None) -> AsyncGenerator[str, None]:
     """Runs the compiled agent graph with the user query and streams the response."""
     if compiled_graph is None:
          logger.error("Agent graph is not compiled. Cannot run agent.")
@@ -59,6 +59,18 @@ async def run_agent(query: str, conversation_history: str = None) -> AsyncGenera
         "If you're asked about project details, structure, purpose, or features, ALWAYS use the CodeBaseRetriever "
         "to gather relevant information first, then synthesize it into a coherent response. "
         "\n\n"
+    )
+    
+    # Add repository context if provided
+    if repository_context:
+        logger.info(f"Including repository context: {repository_context}")
+        system_message += (
+            f"{repository_context}\n\n"
+            "When answering questions, focus on this specific repository unless the user explicitly asks about other repositories. "
+            "If the user asks about a feature or component not in this repository, clarify that it's not present in the current repository context.\n\n"
+        )
+        
+    system_message += (
         "IMPORTANT GUIDELINES FOR HANDLING INCONSISTENT INFORMATION:\n"
         "1. When you encounter conflicting information about the project, explicitly acknowledge the inconsistency\n"
         "2. Prioritize information from README files and official documentation over code comments\n"

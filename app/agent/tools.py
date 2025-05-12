@@ -106,7 +106,7 @@ class Neo4jCodeRetriever(BaseRetriever):
             # Standard vector search
             search_results: List[Dict[str, Any]] = await db_manager.vector_search_code_chunks(
                 query_embedding=query_embedding,
-                k=search_k  # Use the adjusted k value
+                k=search_k,  # Use the adjusted k value
             )
             logger.debug(f"Neo4j vector search returned {len(search_results)} results.")
         except Exception as e:
