@@ -4,7 +4,9 @@ Athenyx is an AI-Powered Knowledge Graph system that indexes, connects, and quer
 
 **Vision:** Empower engineering teams with instant, contextual insights into their software systems across multiple repositories.
 
-[![Video Title](https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg)](https://www.youtube.com/watch?v=TBjGveJrfo0)
+<a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
+  <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Athenyx" width="480" height="360" border="10" />
+</a>
 
 ## Current Features
 
