@@ -1,8 +1,36 @@
-# Actuamind - Enterprise AI Knowledge Platform
+# Actuamind: Autonomous Software Engineering Intelligence
 
-Actuamind is an AI-Powered Knowledge Graph system that indexes, connects, and queries software project information (code structure, semantics) using Neo4j, LangChain, LangGraph, Tree-sitter, FastAPI, and Streamlit.
+##Overview
+Actuamind is an AI-powered knowledge and autonomous agent system that not only indexes, connects, and queries software project information (including code structure and semantics), but also actively performs software engineering tasks. 
+It operates as both an intelligent knowledge base and a proactive development assistant capable of implementing code changes, completing tasks, and providing 24/7 operational support.
 
-**Vision:** Empower engineering teams with instant, contextual insights into their software systems across multiple repositories.
+Actuamind functions as an "AI-powered Google Maps and City Guide" for your software ecosystem by:
+
+- **Automatically mapping** code across repositories and languages, documentation from various sources, and team structures
+- **Understanding connections** between interdependent services, documentation, and code
+- **Comprehending meaning** beyond just structure
+- **Enabling natural language queries** like "What services process customer orders?" or "Where are the authentication module design documents?"
+
+## Beyond Knowledge: Agentic Capabilities
+Actuamind leverages its comprehensive knowledge map to:
+
+- **Autonomously execute code updates** by understanding context and implications
+- **Complete Jira tasks independently** by connecting documentation requirements to code implementations
+- **Act as a 24/7 on-call engineer** with full system context
+- **Support technical questions** in support channels with accurate, contextual responses
+- **Assist on-call engineers** by providing insights during system alerts and incidents
+
+## The Goal
+Actuamind aims to help engineering teams:
+
+- Understand complex systems faster
+- Build new features more efficiently
+- Fix bugs more effectively
+- Collaborate seamlessly
+- Onboard new team members quickly
+- Make better-informed technical decisions
+- Reduce on-call burden through intelligent automation
+- Accelerate incident response with contextual system understanding
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
@@ -253,3 +281,19 @@ Requires managing the Neo4j instance and Python processes separately.
 * Optimize performance (embedding speed, query speed)
 * Enhanced repository comparison and cross-repository analysis
 * Team collaboration features (shared notes, insights)
+
+## FAQ
+**Q: Does Actuamind require access to my repository history?**  
+A: Yes, Actuamind needs Git access to build a comprehensive knowledge graph of your codebase.
+
+**Q: Can Actuamind work with private repositories?**  
+A: Absolutely! All data is processed locally or within your infrastructure, ensuring security.
+
+**Q: How does Actuamind differ from traditional documentation tools?**  
+A: Actuamind not only indexes documentation but understands code semantics and can take autonomous actions based on this knowledge.
+
+**Q: What programming languages are supported?**  
+A: Currently Python, Go, C#, Java, and JavaScript. More languages will be added in future releases.
+
+**Q: Do I need an OpenAI API key?**  
+A: Yes, the current version requires an OpenAI API key for the LLM agent and potentially for embeddings.
