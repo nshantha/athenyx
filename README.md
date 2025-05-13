@@ -143,7 +143,7 @@ Key motivations:
 
 * [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 * API Keys (Store in `.env` file):
-  * `OPENAI_API_KEY`: Required for the LLM agent (e.g., GPT-4o-mini) and potentially embeddings if not using a local model. Get from [OpenAI Platform](https://platform.openai.com/api-keys).
+  * `OPENAI_API_KEY`: Required for the LLM agent (e.g., GPT4.1-mini) and potentially embeddings if not using a local model. Get from [OpenAI Platform](https://platform.openai.com/api-keys).
 
 ### Local Execution
 
@@ -185,7 +185,7 @@ Edit the `.env` file with your specific settings:
 * `EMBEDDING_MODEL_NAME`: (If using local Sentence Transformers) e.g., `all-MiniLM-L6-v2`
 * `EMBEDDING_DIMENSIONS`: Crucial. Set this to match your embedding model (e.g., 1536 for OpenAI `text-embedding-3-small`, 384 for `all-MiniLM-L6-v2`, 768 for `bge-base-en-v1.5`). The Neo4j index depends on this.
 * `OPENAI_EMBEDDING_MODEL`: (If using OpenAI embeddings) e.g., `text-embedding-3-small`
-* `OPENAI_LLM_MODEL`: The model for the agent, e.g., `gpt-4o-mini`
+* `OPENAI_LLM_MODEL`: The model for the agent, e.g., `gpt-4.1-mini`
 * `INGEST_REPO_URL`: Optional default Git URL of a repository you want to index (e.g., `https://github.com/GoogleCloudPlatform/microservices-demo.git`)
 * `INGEST_TARGET_EXTENSIONS`: Comma-separated list of file extensions to process (e.g., `.py,.go,.cs,.java,.js`)
 * `BACKEND_API_URL`:
