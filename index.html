@@ -379,6 +379,25 @@
             padding: 1rem 0;
         }
         
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .github-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--dark);
+            font-size: 1.5rem;
+            transition: color 0.3s ease;
+        }
+        
+        .github-link:hover {
+            color: var(--primary);
+        }
+        
         .logo {
             font-size: 1.5rem;
             font-weight: 700;
@@ -814,14 +833,19 @@
     <header>
         <div class="container">
             <nav>
-                <a href="#" class="logo">
-                    <span>Actua</span>mind
-                </a>
+                <div class="logo-section">
+                    <a href="#" class="logo">
+                        <span>Actua</span>mind
+                    </a>
+                    <a href="https://github.com/nshantha/actuamind" target="_blank" class="github-link" title="View on GitHub">
+                        <i class="fab fa-github"></i>
+                    </a>
+                </div>
                 <div class="nav-links" id="navLinks">
                     <a href="#video-showcase">See In Action</a>
                     <a href="#features">Features</a>
-                    <a href="#how-it-works">How It Works</a>
                     <a href="#problem">Why</a>
+                    <a href="#how-it-works">How It Works</a>
                     <a href="#roadmap">Roadmap</a>
                     <a href="#faq">FAQ</a>
                 </div>
@@ -1019,7 +1043,7 @@
     <section id="how-it-works" class="section bg-white py-20">
         <div class="container">
             <h2 class="section-title text-center">How Actuamind Works</h2>
-            <p class="section-subtitle text-center mx-auto">Our intelligent platform creates a comprehensive knowledge graph of your software ecosystem and enables powerful interactions</p>
+            <p class="section-subtitle text-center mx-auto" style="margin-left: auto; margin-right: auto;">Our intelligent platform creates a comprehensive knowledge graph of your software ecosystem and enables powerful interactions</p>
             
             <div class="workflow-container mt-16">
                 <!-- Step 1 -->
@@ -1103,51 +1127,6 @@
                                 <li><i class="fas fa-check"></i> Intelligent task execution</li>
                             </ul>
                         </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="architecture-overview mt-16 p-8 rounded-xl bg-gray shadow-lg">
-                <h3 class="text-xl font-bold mb-6 text-center">Architecture Overview</h3>
-                <div class="grid grid-cols-5 gap-4">
-                    <div class="arch-component">
-                        <div class="arch-icon">
-                            <i class="fas fa-database"></i>
-                        </div>
-                        <div class="arch-name">Data Layer</div>
-                        <div class="arch-tech">Neo4j Graph DB + Vector Index</div>
-                    </div>
-                    
-                    <div class="arch-component">
-                        <div class="arch-icon">
-                            <i class="fas fa-file-import"></i>
-                        </div>
-                        <div class="arch-name">Ingestion Layer</div>
-                        <div class="arch-tech">GitPython, Tree-sitter</div>
-                    </div>
-                    
-                    <div class="arch-component">
-                        <div class="arch-icon">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <div class="arch-name">Processing Layer</div>
-                        <div class="arch-tech">LangChain & LangGraph</div>
-                    </div>
-                    
-                    <div class="arch-component">
-                        <div class="arch-icon">
-                            <i class="fas fa-server"></i>
-                        </div>
-                        <div class="arch-name">API Layer</div>
-                        <div class="arch-tech">FastAPI</div>
-                    </div>
-                    
-                    <div class="arch-component">
-                        <div class="arch-icon">
-                            <i class="fas fa-desktop"></i>
-                        </div>
-                        <div class="arch-name">UI Layer</div>
-                        <div class="arch-tech">Streamlit</div>
                     </div>
                 </div>
             </div>
@@ -1246,50 +1225,6 @@
                 padding: 1rem 1.5rem;
             }
             
-            .architecture-overview {
-                background-color: #f8fafc;
-            }
-            
-            .arch-component {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                background-color: white;
-                padding: 1.5rem 1rem;
-                border-radius: 0.5rem;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-            }
-            
-            .arch-component:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-            }
-            
-            .arch-icon {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                width: 3rem;
-                height: 3rem;
-                border-radius: 9999px;
-                background: linear-gradient(135deg, #2563eb, #0ea5e9);
-                color: white;
-                margin-bottom: 1rem;
-                font-size: 1.25rem;
-            }
-            
-            .arch-name {
-                font-weight: 600;
-                margin-bottom: 0.5rem;
-            }
-            
-            .arch-tech {
-                font-size: 0.875rem;
-                color: var(--gray);
-            }
-            
             @media (max-width: 991px) {
                 .workflow-number {
                     width: 60px;
@@ -1303,15 +1238,6 @@
                 
                 .workflow-description {
                     max-width: 100%;
-                }
-                
-                .grid-cols-5 {
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 1rem;
-                }
-                
-                .arch-component {
-                    margin-bottom: 1rem;
                 }
             }
             
@@ -1343,10 +1269,6 @@
                 .workflow-description {
                     font-size: 1rem;
                 }
-                
-                .grid-cols-5 {
-                    grid-template-columns: repeat(2, 1fr);
-                }
             }
             
             @media (max-width: 576px) {
@@ -1365,10 +1287,6 @@
                 .workflow-content {
                     padding-left: 0;
                 }
-                
-                .grid-cols-5 {
-                    grid-template-columns: repeat(1, 1fr);
-                }
             }
         </style>
     </section>
@@ -1376,7 +1294,7 @@
     <section id="roadmap" class="section bg-white">
         <div class="container">
             <h2 class="section-title text-center">Roadmap</h2>
-            <p class="section-subtitle text-center mx-auto">Our development journey is focused on bringing autonomous capabilities to your engineering process</p>
+            <p class="section-subtitle text-center mx-auto" style="margin-left: auto; margin-right: auto;">Our development journey is focused on bringing autonomous capabilities to your engineering process</p>
             
             <div class="grid grid-cols-2 gap-8 mt-12">
                 <div class="feature-card">
