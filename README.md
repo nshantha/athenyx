@@ -1,8 +1,8 @@
 # Actuamind: Autonomous Software Engineering Intelligence
 
-##Overview
-Actuamind is an AI-powered knowledge and autonomous agent system that not only indexes, connects, and queries software project information (including code structure and semantics), but also actively performs software engineering tasks. 
-It operates as both an intelligent knowledge base and a proactive development assistant capable of implementing code changes, completing tasks, and providing 24/7 operational support.
+## Overview
+- Actuamind is an AI-powered knowledge and autonomous agent system that not only indexes, connects, and queries software project information (including code structure and semantics), but also actively performs software engineering tasks. 
+- It operates as both an intelligent knowledge base and a proactive development assistant capable of implementing code changes, completing tasks, and providing 24/7 operational support.
 
 Actuamind functions as an "AI-powered Google Maps and City Guide" for your software ecosystem by:
 
@@ -10,6 +10,16 @@ Actuamind functions as an "AI-powered Google Maps and City Guide" for your softw
 - **Understanding connections** between interdependent services, documentation, and code
 - **Comprehending meaning** beyond just structure
 - **Enabling natural language queries** like "What services process customer orders?" or "Where are the authentication module design documents?"
+
+<div align="center">
+  <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
+    <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Actuamind - Enterprise AI Knowledge Platform" width="600" />
+  </a>
+  <br>
+  <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
+    <img src="https://img.shields.io/badge/▶-Watch_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Video" width="180">
+  </a>
+</div>
 
 ## Beyond Knowledge: Agentic Capabilities
 Actuamind leverages its comprehensive knowledge map to:
@@ -31,16 +41,6 @@ Actuamind aims to help engineering teams:
 - Make better-informed technical decisions
 - Reduce on-call burden through intelligent automation
 - Accelerate incident response with contextual system understanding
-
-<div align="center">
-  <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
-    <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Actuamind - Enterprise AI Knowledge Platform" width="600" />
-  </a>
-  <br>
-  <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
-    <img src="https://img.shields.io/badge/▶-Watch_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Video" width="180">
-  </a>
-</div>
 
 ## Current Features
 
