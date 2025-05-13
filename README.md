@@ -244,7 +244,6 @@ Requires managing the Neo4j instance and Python processes separately.
 
 ## Development
 
-* **Docker**: If using `docker-compose up`, changes to Python files within the project directory (mounted into `/app`) should trigger automatic reloading for both the Uvicorn (backend) and Streamlit (frontend) servers. If you change dependencies (`pyproject.toml`) or the Dockerfile, you'll need to rebuild the images (`docker-compose build` or `docker-compose up --build`).
 * **Local**: Both `uvicorn --reload` and `streamlit run` automatically watch for changes in the relevant Python files and reload the servers.
 
 ## Troubleshooting Common Issues
