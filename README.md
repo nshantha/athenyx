@@ -3,7 +3,7 @@
 ## Overview
 Actuamind is a revolutionary AI-powered platform that transforms how engineering teams understand and interact with their software ecosystems. It serves two essential functions:
 - **Intelligent Knowledge System**: Actuamind creates a comprehensive, interconnected map of your entire software landscape by indexing, analyzing, and connecting information across code repositories, documentation, and team structures. This knowledge graph enables natural language queries about any aspect of your systems.
-- **Autonomous Engineering Assistant**: Building on this deep understanding, Actuamind will actively participate in the software development lifecycle by automating routine tasks, implementing code changes, providing 24/7 operational support, and accelerating onboarding for team members across all roles.
+- **Autonomous Engineering Assistants**: Building on this deep understanding, Actuamind will actively participate in the software development lifecycle by automating routine tasks, implementing code changes, providing 24/7 operational support, and accelerating onboarding for team members across all roles.
 
 By combining advanced knowledge representation with agentic capabilities, Actuamind dramatically reduces the cognitive burden on engineers, accelerates development cycles, and democratizes access to system knowledge throughout your organization. Whether you're a senior engineer debugging a complex issue, a new team member getting up to speed, or a manager needing technical context without code immersion, Actuamind provides the right information and assistance exactly when you need it.
 
