@@ -26,8 +26,8 @@ REPOSITORIES_ENDPOINT = f"{BACKEND_API_URL}/api/repositories" # Repository manag
 
 # --- Streamlit App Layout ---
 
-st.set_page_config(page_title="Athenyx", layout="wide")
-st.title("Athenyx 🧠 Enterprise AI Knowledge Platform")
+st.set_page_config(page_title="Actuamind", layout="wide")
+st.title("Actuamind 🧠 Enterprise AI Knowledge Platform")
 
 # --- Repository Management ---
 
@@ -281,9 +281,9 @@ if st.session_state.get("switching_repository", False):
 # Show project information if no messages yet
 if len(st.session_state.messages) == 0:
     st.markdown("""
-    ## Welcome to Athenyx
+    ## Welcome to Actuamind
     
-    Athenyx is an Enterprise AI Knowledge Platform that helps you understand and navigate complex codebases.
+    Actuamind is an Enterprise AI Knowledge Platform that helps you understand and navigate complex codebases.
     
     ### Getting Started
     
@@ -388,7 +388,7 @@ st.markdown("---")
 st.markdown(
     """
     <div style="text-align: center; opacity: 0.7; font-size: 0.8em;">
-        <p>Athenyx - Enterprise AI Knowledge Platform</p>
+        <p>Actuamind - Enterprise AI Knowledge Platform</p>
     </div>
     """, 
     unsafe_allow_html=True

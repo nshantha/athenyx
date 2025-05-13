@@ -1,12 +1,12 @@
-# Athenyx - Enterprise AI Knowledge Platform
+# Actuamind - Enterprise AI Knowledge Platform
 
-Athenyx is an AI-Powered Knowledge Graph system that indexes, connects, and queries software project information (code structure, semantics) using Neo4j, LangChain, LangGraph, Tree-sitter, FastAPI, and Streamlit.
+Actuamind is an AI-Powered Knowledge Graph system that indexes, connects, and queries software project information (code structure, semantics) using Neo4j, LangChain, LangGraph, Tree-sitter, FastAPI, and Streamlit.
 
 **Vision:** Empower engineering teams with instant, contextual insights into their software systems across multiple repositories.
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
-    <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Athenyx - Enterprise AI Knowledge Platform" width="600" />
+    <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Actuamind - Enterprise AI Knowledge Platform" width="600" />
   </a>
   <br>
   <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
@@ -191,7 +191,7 @@ Requires managing the Neo4j instance and Python processes separately.
    * Backend API Docs: http://localhost:8000/docs
    * Neo4j Browser: Access your local/cloud instance directly via its specific URL/port
 
-## Using Athenyx
+## Using Actuamind
 
 1. **Adding Repositories**:
    * Navigate to the Streamlit UI (usually http://localhost:8501)
