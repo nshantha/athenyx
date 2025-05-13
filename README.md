@@ -1,19 +1,15 @@
 # Actuamind: Autonomous Software Engineering Intelligence
 
 ## Overview
-- Actuamind is an AI-powered knowledge and autonomous agent system that not only indexes, connects, and queries software project information (including code structure and semantics), but also actively performs software engineering tasks. 
-- It operates as both an intelligent knowledge base and a proactive development assistant capable of implementing code changes, completing tasks, and providing 24/7 operational support.
+Actuamind is a revolutionary AI-powered platform that transforms how engineering teams understand and interact with their software ecosystems. It serves two essential functions:
+- **Intelligent Knowledge System**: Actuamind creates a comprehensive, interconnected map of your entire software landscape by indexing, analyzing, and connecting information across code repositories, documentation, and team structures. This knowledge graph enables natural language queries about any aspect of your systems.
+- **Autonomous Engineering Assistant**: Building on this deep understanding, Actuamind will actively participate in the software development lifecycle by automating routine tasks, implementing code changes, providing 24/7 operational support, and accelerating onboarding for team members across all roles.
 
-Actuamind functions as an "AI-powered Google Maps and City Guide" for your software ecosystem by:
-
-- **Automatically mapping** code across repositories and languages, documentation from various sources, and team structures
-- **Understanding connections** between interdependent services, documentation, and code
-- **Comprehending meaning** beyond just structure
-- **Enabling natural language queries** like "What services process customer orders?" or "Where are the authentication module design documents?"
+By combining advanced knowledge representation with agentic capabilities, Actuamind dramatically reduces the cognitive burden on engineers, accelerates development cycles, and democratizes access to system knowledge throughout your organization. Whether you're a senior engineer debugging a complex issue, a new team member getting up to speed, or a manager needing technical context without code immersion, Actuamind provides the right information and assistance exactly when you need it.
 
 <div align="center">
   <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
-    <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Actuamind - Enterprise AI Knowledge Platform" width="600" />
+    <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Actuamind - Autonomous Software Engineering Intelligence" width="600" />
   </a>
   <br>
   <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
@@ -21,14 +17,47 @@ Actuamind functions as an "AI-powered Google Maps and City Guide" for your softw
   </a>
 </div>
 
+## Table of Contents
+- [The Problem](#the-problem)
+- [The Solution](#the-solution)
+- [Beyond Knowledge: Future Agentic Capabilities](#beyond-knowledge-future-agentic-capabilities)
+- [The Goal](#the-goal)
+- [Why Actuamind?](#why-actuamind)
+- [Current Features](#current-features)
+- [Architecture Overview](#architecture-overview)
+- [Prerequisites](#prerequisites)
+- [Setup](#setup)
+- [Running the Application](#running-the-application)
+- [Using Actuamind](#using-actuamind)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting-common-issues)
+- [Project Structure](#project-structure-brief)
+- [FAQ](#faq)
+- [Next Steps / Future Enhancements](#next-steps--future-enhancements)
+
+## The Problem
+Navigating your company's software ecosystem is increasingly challenging due to:
+
+- **Knowledge Fragmentation**: Documentation is often outdated, incomplete, or scattered across multiple systems
+- **Context Loss**: Critical insights about code structure and decisions are lost during team transitions
+- **Manual Overhead**: Engineers spend excessive time understanding code before making changes
+- **Limited Automation**: Existing tools can detect issues but can't autonomously fix them
+- **Operational Burden**: On-call rotations and support responsibilities create burnout and context switching
+- **Siloed Expertise**: Knowledge of system behavior is concentrated among a few experienced engineers
+- **Lengthy Onboarding**: New team members (engineers, managers, product owners, QA) take months to become productive, with both technical and non-technical staff struggling to navigate complex systems without years of institutional knowledge
+
+These challenges not only slow down development and complicate problem-solving but also create significant cognitive load for engineering teams.
+
 ## Beyond Knowledge: Agentic Capabilities
-Actuamind leverages its comprehensive knowledge map to:
+Actuamind has a planned roadmap to leverage its comprehensive knowledge map to:
 
 - **Autonomously execute code updates** by understanding context and implications
 - **Complete Jira tasks independently** by connecting documentation requirements to code implementations
 - **Act as a 24/7 on-call engineer** with full system context
 - **Support technical questions** in support channels with accurate, contextual responses
 - **Assist on-call engineers** by providing insights during system alerts and incidents
+
+*Note: These agentic capabilities are on our roadmap and not yet implemented in the current version.*
 
 ## The Goal
 Actuamind aims to help engineering teams:
@@ -41,6 +70,16 @@ Actuamind aims to help engineering teams:
 - Make better-informed technical decisions
 - Reduce on-call burden through intelligent automation
 - Accelerate incident response with contextual system understanding
+
+## Why Actuamind?
+Actuamind was created to address the growing complexity in modern software ecosystems. As codebases expand and team structures evolve, the knowledge of how everything fits together becomes increasingly siloed and fragmented. We built Actuamind to democratize this knowledge and create an intelligent assistant that not only understands your software but can also take action on it.
+
+Key motivations:
+- Reduce context-switching for developers
+- Minimize knowledge loss during team transitions
+- Accelerate onboarding of new team members
+- Enable 24/7 support without burnout
+- Create a single source of truth for all knowledge
 
 ## Current Features
 
@@ -68,9 +107,6 @@ Actuamind aims to help engineering teams:
     * Web search via Tavily (optional, requires API key)
   * Streams the agent's final answer token-by-token
   * Offers a streamlined Streamlit web UI for interaction
-* **Deployment Options:**
-  * Includes Docker Compose setup for easier deployment
-  * Supports local development environment
 
 ## Architecture Overview
 
@@ -87,21 +123,11 @@ Actuamind aims to help engineering teams:
 * [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 * API Keys (Store in `.env` file):
   * `OPENAI_API_KEY`: Required for the LLM agent (e.g., GPT-4o-mini) and potentially embeddings if not using a local model. Get from [OpenAI Platform](https://platform.openai.com/api-keys).
-  * `TAVILY_API_KEY`: Optional, only needed if you want the agent to perform web searches via Tavily. Get from [Tavily AI](https://tavily.com/).
 
-### For Docker Execution (Recommended)
-
-* [Docker](https://docs.docker.com/get-docker/)
-* [Docker Compose](https://docs.docker.com/compose/install/) (usually included with Docker Desktop)
-
-### For Local Execution
+### Local Execution
 
 * [Python](https://www.python.org/downloads/) >= 3.10
 * [Poetry](https://python-poetry.org/docs/#installation) (Python dependency manager)
-* **C/C++ Compiler:** Required by the `tree-sitter` package to build language grammars during `poetry install`.
-  * *Linux (Debian/Ubuntu):* `sudo apt-get update && sudo apt-get install build-essential`
-  * *macOS:* Install Xcode Command Line Tools: `xcode-select --install`
-  * *Windows:* Install "Build Tools for Visual Studio" (select C++ build tools workload). Community version is free. Ensure compiler (`cl.exe`) is in your system's PATH. [See Python docs for details](https://wiki.python.org/moin/WindowsCompilers).
 * **Neo4j Database Instance:** A running Neo4j database accessible from your local machine.
   * *Local:* Install [Neo4j Desktop](https://neo4j.com/download/) or Neo4j Community/Enterprise Server. Start the database. The default connection URI is usually `bolt://localhost:7687`.
   * *Cloud:* Use [Neo4j AuraDB](https://neo4j.com/cloud/platform/aura-database/) (offers a free tier). Create an instance and note its connection URI, username, and password.
@@ -131,12 +157,10 @@ Copy-Item .env.example .env
 
 Edit the `.env` file with your specific settings:
 * `OPENAI_API_KEY`: Your key (required)
-* `TAVILY_API_KEY`: Your key (optional)
 * `NEO4J_URI`:
-  * For Docker: Use `bolt://neo4j:7687` (connects to the Neo4j container)
   * For Local: Use your local/cloud Neo4j URI (e.g., `bolt://localhost:7687` or AuraDB URI)
 * `NEO4J_USERNAME`: Your Neo4j username (default `neo4j`)
-* `NEO4J_PASSWORD`: Your Neo4j password. Must match the one set in `docker-compose.yml` if using Docker
+* `NEO4J_PASSWORD`: Your Neo4j password. 
 * `EMBEDDING_MODEL_NAME`: (If using local Sentence Transformers) e.g., `all-MiniLM-L6-v2`
 * `EMBEDDING_DIMENSIONS`: Crucial. Set this to match your embedding model (e.g., 1536 for OpenAI `text-embedding-3-small`, 384 for `all-MiniLM-L6-v2`, 768 for `bge-base-en-v1.5`). The Neo4j index depends on this.
 * `OPENAI_EMBEDDING_MODEL`: (If using OpenAI embeddings) e.g., `text-embedding-3-small`
@@ -144,7 +168,6 @@ Edit the `.env` file with your specific settings:
 * `INGEST_REPO_URL`: Optional default Git URL of a repository you want to index (e.g., `https://github.com/GoogleCloudPlatform/microservices-demo.git`)
 * `INGEST_TARGET_EXTENSIONS`: Comma-separated list of file extensions to process (e.g., `.py,.go,.cs,.java,.js`)
 * `BACKEND_API_URL`:
-  * For Docker: Use `http://backend:8000` (the frontend container connects to the backend container)
   * For Local: Use `http://localhost:8000` (the frontend process connects to the backend process)
 
 ### 3. Install Dependencies & Build Grammars
@@ -164,41 +187,9 @@ Monitor Output: Check for errors during installation, especially during steps in
 
 ## Running the Application
 
-Choose one of the following methods:
-
-### Option 1: Running with Docker (Recommended)
-
-Manages Neo4j, backend, and frontend services together.
-
-#### Build and Start Services
-
-```bash
-docker-compose up --build -d
-```
-* `-d`: Runs services in detached (background) mode
-* `--build`: Rebuilds Docker images if code or Dockerfiles have changed
-
-Wait ~1 minute for Neo4j to initialize on the first run. Check status: `docker-compose ps` or logs: `docker-compose logs neo4j`.
-
-#### Access Services
-
-* Frontend UI: http://localhost:8501
-* Backend API Docs: http://localhost:8000/docs
-* Neo4j Browser: http://localhost:7474 (Login with `NEO4J_USERNAME` / `NEO4J_PASSWORD` from `.env`)
-
-#### Stopping Services
-
-```bash
-docker-compose down
-```
-
-To remove the Neo4j data volume (deletes all graph data): `docker-compose down -v`
-
-### Option 2: Running Locally (Requires Manual Setup)
-
 Requires managing the Neo4j instance and Python processes separately.
 
-1. **Ensure Prerequisites**: Verify Python, Poetry, Compiler, and a running Neo4j instance are ready.
+1. **Ensure Prerequisites**: Verify Python(3.12), Poetry, Compiler, and a running Neo4j instance are ready.
 
 2. **Install Dependencies**: Run `poetry install` (if not already done). Check for Tree-sitter grammar build success.
 
@@ -248,14 +239,45 @@ Requires managing the Neo4j instance and Python processes separately.
 
 ## Troubleshooting Common Issues
 
-* **ModuleNotFoundError**: Usually means a dependency is missing. Run `poetry install`. Check `pyproject.toml`.
-* **Tree-sitter Build Errors**: Ensure C/C++ compiler is installed and accessible in your PATH. Consult tree-sitter and tree-sitter-languages documentation.
-* **API Key Errors (OpenAI/Tavily)**: Double-check variable names (`OPENAI_API_KEY`, `TAVILY_API_KEY`) and values in your `.env` file. Ensure the file is saved and located in the project root.
-* **Neo4j Connection Errors**: Verify `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` in `.env` match your running Neo4j instance. Ensure Neo4j is running and accessible (check firewall if needed). If using Docker, ensure the Neo4j container is healthy (`docker-compose ps`).
-* **NameResolutionError: Failed to resolve 'backend' (UI)**: You are likely running the UI locally but `BACKEND_API_URL` in `.env` is set to `http://backend:8000` (for Docker). Change it to `http://localhost:8000` for local runs.
-* **Embedding Dimension Errors**: Ensure `EMBEDDING_DIMENSIONS` in `.env` matches the output dimension of your chosen embedding model. If you change models/dimensions, you may need to DROP the old vector index in Neo4j (`DROP INDEX code_chunk_embeddings`) before re-running ingestion.
-* **Rate Limit Errors (OpenAI)**: The embedding step may take time or fail if you process large repositories. Solutions: Add delays (`ingestion/processing/embedding.py`), filter input files (`ingestion/main.py`), request higher OpenAI limits, or switch to a local embedding model.
-* **Repository Not Showing After Adding**: The UI automatically refreshes after adding a repository, but you can manually refresh by clicking "Check Status" in the ingestion progress area.
+<details>
+<summary><b>ModuleNotFoundError</b></summary>
+Usually means a dependency is missing. Run <code>poetry install</code>. Check <code>pyproject.toml</code>.
+</details>
+
+<details>
+<summary><b>Tree-sitter Build Errors</b></summary>
+Ensure C/C++ compiler is installed and accessible in your PATH. Consult tree-sitter and tree-sitter-languages documentation.
+</details>
+
+<details>
+<summary><b>API Key Errors (OpenAI/Tavily)</b></summary>
+Double-check variable names (<code>OPENAI_API_KEY</code>, <code>TAVILY_API_KEY</code>) and values in your <code>.env</code> file. Ensure the file is saved and located in the project root.
+</details>
+
+<details>
+<summary><b>Neo4j Connection Errors</b></summary>
+Verify <code>NEO4J_URI</code>, <code>NEO4J_USERNAME</code>, <code>NEO4J_PASSWORD</code> in <code>.env</code> match your running Neo4j instance. Ensure Neo4j is running and accessible (check firewall if needed). If using Docker, ensure the Neo4j container is healthy (<code>docker-compose ps</code>).
+</details>
+
+<details>
+<summary><b>NameResolutionError: Failed to resolve 'backend' (UI)</b></summary>
+You are likely running the UI locally but <code>BACKEND_API_URL</code> in <code>.env</code> is set to <code>http://backend:8000</code> (for Docker). Change it to <code>http://localhost:8000</code> for local runs.
+</details>
+
+<details>
+<summary><b>Embedding Dimension Errors</b></summary>
+Ensure <code>EMBEDDING_DIMENSIONS</code> in <code>.env</code> matches the output dimension of your chosen embedding model. If you change models/dimensions, you may need to DROP the old vector index in Neo4j (<code>DROP INDEX code_chunk_embeddings</code>) before re-running ingestion.
+</details>
+
+<details>
+<summary><b>Rate Limit Errors (OpenAI)</b></summary>
+The embedding step may take time or fail if you process large repositories. Solutions: Add delays (<code>ingestion/processing/embedding.py</code>), filter input files (<code>ingestion/main.py</code>), request higher OpenAI limits, or switch to a local embedding model.
+</details>
+
+<details>
+<summary><b>Repository Not Showing After Adding</b></summary>
+The UI automatically refreshes after adding a repository, but you can manually refresh by clicking "Check Status" in the ingestion progress area.
+</details>
 
 ## Project Structure (Brief)
 
@@ -266,20 +288,6 @@ Requires managing the Neo4j instance and Python processes separately.
 * `Dockerfile`, `docker-compose.yml`: Docker configuration
 * `pyproject.toml`, `poetry.lock`: Dependency management
 * `.env.example`, `.env`: Environment variables
-
-## Next Steps / Future Enhancements
-
-* Implement more robust error handling throughout
-* Add dedicated graph query tools to the agent (e.g., finding callers/callees)
-* Implement advanced hybrid retrieval strategies (Graph RAG)
-* Refine Tree-sitter parsers for deeper analysis (imports, specific calls)
-* Add comprehensive unit and integration tests
-* Implement efficient incremental updates for the ingestion pipeline
-* Integrate Confluence/Jira data sources
-* Improve UI/UX (display context, chat history, graph visualizations)
-* Optimize performance (embedding speed, query speed)
-* Enhanced repository comparison and cross-repository analysis
-* Team collaboration features (shared notes, insights)
 
 ## FAQ
 **Q: Does Actuamind require access to my repository history?**  
@@ -296,3 +304,48 @@ A: Currently Python, Go, C#, Java, and JavaScript. More languages will be added 
 
 **Q: Do I need an OpenAI API key?**  
 A: Yes, the current version requires an OpenAI API key for the LLM agent and potentially for embeddings.
+
+## Next Steps / Future Enhancements
+
+### Roadmap
+* **External Systems Integration**
+  * Implement JIRA ticket ingestion to connect code with task context
+  * Add Confluence documentation integration for complete knowledge context
+  * Create unified querying across code, tickets, and documentation
+  * Build relationships between code changes and associated tickets/documentation
+* **Agentic Capabilities Integration**
+  * Implement AI agents to perform autonomous code analysis
+  * Develop reasoning layer for connecting knowledge graph data to practical actions
+  * Create foundation for proactive recommendations based on codebase knowledge
+* **Autonomous Engineering Features** 
+  * Build task execution agents that can complete Jira tickets based on knowledge context
+  * Develop capabilities to connect documentation requirements to code implementations
+  * Create support agents for answering technical questions in Slack channels
+* **DevOps Integration**
+  * Implement context-aware alert analysis and prioritization
+  * Add CI/CD pipeline integration for deployment awareness
+  * Design monitoring capabilities for system health insights
+* **User Experience Improvements**
+  * Design specialized UI for different user personas (developers, managers, SREs)
+  * Implement visual graph exploration for code relationships
+  * Create customizable dashboards for engineering insights
+* **Advanced Autonomous Features**
+  * Enable autonomous feature implementation from requirements documents
+  * Develop predictive maintenance through codebase health monitoring
+  * Create self-evolving knowledge system that learns from interactions
+* **Cross-repository Intelligence**
+  * Develop cross-company knowledge graphs for enterprise deployments
+  * Implement code reuse recommendations across systems
+  * Enable architecture optimization suggestions based on patterns across repositories
+
+## Contributing
+We welcome contributions to Actuamind! Whether it's bug reports, feature requests, or code contributions, your help is appreciated.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Contact
+Project Maintainer - [Nitesh Shantha Kumar](https://www.linkedin.com/in/niteshs1001/)
