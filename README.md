@@ -7,6 +7,8 @@ Actuamind is a revolutionary AI-powered platform that transforms how engineering
 
 By combining advanced knowledge representation with agentic capabilities, Actuamind dramatically reduces the cognitive burden on engineers, accelerates development cycles, and democratizes access to system knowledge throughout your organization. Whether you're a senior engineer debugging a complex issue, a new team member getting up to speed, or a manager needing technical context without code immersion, Actuamind provides the right information and assistance exactly when you need it.
 
+*Note: These agentic capabilities are on our roadmap and not yet implemented in the current version.*
+
 <div align="center">
   <a href="https://www.youtube.com/watch?v=TBjGveJrfo0">
     <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Actuamind - Autonomous Software Engineering Intelligence" width="600" />
@@ -56,8 +58,6 @@ Actuamind has a planned roadmap to leverage its comprehensive knowledge map to:
 - **Act as a 24/7 on-call engineer** with full system context
 - **Support technical questions** in support channels with accurate, contextual responses
 - **Assist on-call engineers** by providing insights during system alerts and incidents
-
-*Note: These agentic capabilities are on our roadmap and not yet implemented in the current version.*
 
 ## The Goal
 Actuamind aims to help engineering teams:
