@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actuamind - Autonomous Software Engineering Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #0ea5e9;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --light-gray: #e2e8f0;
+            --hover-gray: #f1f5f9;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            background-color: var(--light);
+            overflow-x: hidden;
+        }
+        
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        a:hover {
+            color: var(--primary-dark);
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .flex {
+            display: flex;
+        }
+        
+        .flex-col {
+            flex-direction: column;
+        }
+        
+        .items-center {
+            align-items: center;
+        }
+        
+        .justify-between {
+            justify-content: space-between;
+        }
+        
+        .justify-center {
+            justify-content: center;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .my-2 {
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .my-4 {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .my-6 {
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .my-8 {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .my-12 {
+            margin-top: 3rem;
+            margin-bottom: 3rem;
+        }
+        
+        .mt-2 {
+            margin-top: 0.5rem;
+        }
+        
+        .mt-4 {
+            margin-top: 1rem;
+        }
+        
+        .mt-8 {
+            margin-top: 2rem;
+        }
+        
+        .mt-12 {
+            margin-top: 3rem;
+        }
+        
+        .mb-2 {
+            margin-bottom: 0.5rem;
+        }
+        
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+        
+        .mb-8 {
+            margin-bottom: 2rem;
+        }
+        
+        .mb-12 {
+            margin-bottom: 3rem;
+        }
+        
+        .py-2 {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+        
+        .py-4 {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        
+        .py-8 {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+        
+        .py-12 {
+            padding-top: 3rem;
+            padding-bottom: 3rem;
+        }
+        
+        .py-16 {
+            padding-top: 4rem;
+            padding-bottom: 4rem;
+        }
+        
+        .py-24 {
+            padding-top: 6rem;
+            padding-bottom: 6rem;
+        }
+        
+        .px-4 {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+        
+        .px-6 {
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+        }
+        
+        .px-8 {
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+        
+        .p-4 {
+            padding: 1rem;
+        }
+        
+        .p-8 {
+            padding: 2rem;
+        }
+        
+        .grid {
+            display: grid;
+        }
+        
+        .grid-cols-1 {
+            grid-template-columns: repeat(1, minmax(0, 1fr));
+        }
+        
+        .grid-cols-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        
+        .grid-cols-3 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        
+        .gap-4 {
+            gap: 1rem;
+        }
+        
+        .gap-6 {
+            gap: 1.5rem;
+        }
+        
+        .gap-8 {
+            gap: 2rem;
+        }
+        
+        .font-light {
+            font-weight: 300;
+        }
+        
+        .font-normal {
+            font-weight: 400;
+        }
+        
+        .font-medium {
+            font-weight: 500;
+        }
+        
+        .font-semibold {
+            font-weight: 600;
+        }
+        
+        .font-bold {
+            font-weight: 700;
+        }
+        
+        .text-sm {
+            font-size: 0.875rem;
+        }
+        
+        .text-base {
+            font-size: 1rem;
+        }
+        
+        .text-lg {
+            font-size: 1.125rem;
+        }
+        
+        .text-xl {
+            font-size: 1.25rem;
+        }
+        
+        .text-2xl {
+            font-size: 1.5rem;
+        }
+        
+        .text-3xl {
+            font-size: 1.875rem;
+        }
+        
+        .text-4xl {
+            font-size: 2.25rem;
+        }
+        
+        .text-5xl {
+            font-size: 3rem;
+        }
+        
+        .leading-tight {
+            line-height: 1.25;
+        }
+        
+        .shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .shadow-md {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .rounded {
+            border-radius: 0.25rem;
+        }
+        
+        .rounded-md {
+            border-radius: 0.375rem;
+        }
+        
+        .rounded-lg {
+            border-radius: 0.5rem;
+        }
+        
+        .rounded-xl {
+            border-radius: 0.75rem;
+        }
+        
+        .rounded-2xl {
+            border-radius: 1rem;
+        }
+        
+        .rounded-full {
+            border-radius: 9999px;
+        }
+        
+        .border {
+            border: 1px solid var(--light-gray);
+        }
+        
+        .transition {
+            transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+        
+        .btn {
+            display: inline-block;
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #0284c7;
+            color: white;
+        }
+        
+        .btn-outlined {
+            background-color: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-outlined:hover {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .btn-lg {
+            padding: 1rem 2rem;
+            font-size: 1.125rem;
+        }
+        
+        header {
+            background-color: white;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo span {
+            color: var(--primary);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+        
+        .nav-links a {
+            color: var(--dark);
+            font-weight: 500;
+        }
+        
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+        
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--dark);
+        }
+        
+        .hero {
+            background: linear-gradient(to right, #f0f9ff, #e0f2fe);
+            padding: 6rem 0;
+        }
+        
+        .hero-content {
+            display: flex;
+            align-items: center;
+            gap: 4rem;
+        }
+        
+        .hero-text {
+            flex: 1;
+        }
+        
+        .hero-image {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .section {
+            padding: 5rem 0;
+        }
+        
+        .section-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--dark);
+        }
+        
+        .section-subtitle {
+            font-size: 1.125rem;
+            color: var(--gray);
+            margin-bottom: 3rem;
+            max-width: 800px;
+        }
+        
+        .feature-card {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .feature-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 9999px;
+            background-color: #e0f2fe;
+            color: var(--secondary);
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card-text {
+            color: var(--gray);
+        }
+        
+        .faq-item {
+            border-bottom: 1px solid var(--light-gray);
+            padding: 1.5rem 0;
+        }
+        
+        .faq-question {
+            font-weight: 600;
+            font-size: 1.125rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .faq-answer {
+            color: var(--gray);
+        }
+        
+        footer {
+            background-color: var(--dark);
+            color: white;
+            padding: 4rem 0 2rem;
+        }
+        
+        .footer-links {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+        }
+        
+        .footer-column h3 {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            color: white;
+        }
+        
+        .footer-column ul {
+            list-style: none;
+        }
+        
+        .footer-column ul li {
+            margin-bottom: 0.75rem;
+        }
+        
+        .footer-column ul li a {
+            color: #94a3b8;
+            transition: color 0.3s;
+        }
+        
+        .footer-column ul li a:hover {
+            color: white;
+        }
+        
+        .copyright {
+            border-top: 1px solid #334155;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            text-align: center;
+            color: #94a3b8;
+        }
+        
+        .social-links {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .social-links a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 9999px;
+            background-color: #334155;
+            color: white;
+            transition: all 0.3s;
+        }
+        
+        .social-links a:hover {
+            background-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .scroll-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background-color: var(--primary);
+            color: white;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            transform: translateY(10px);
+            z-index: 99;
+        }
+        
+        .scroll-to-top.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .feature-list {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+        
+        .feature-list li {
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .feature-list li i {
+            color: var(--success);
+            margin-right: 0.5rem;
+            margin-top: 0.25rem;
+        }
+        
+        .timeline {
+            position: relative;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .timeline::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            background-color: var(--light-gray);
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            margin-left: -3px;
+        }
+        
+        .timeline-container {
+            padding: 10px 40px;
+            position: relative;
+            background-color: inherit;
+            width: 50%;
+        }
+        
+        .timeline-container.left {
+            left: 0;
+        }
+        
+        .timeline-container.right {
+            left: 50%;
+        }
+        
+        .timeline-content {
+            padding: 20px 30px;
+            background-color: white;
+            position: relative;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .cta {
+            background: linear-gradient(to right, #2563eb, #0ea5e9);
+            color: white;
+            padding: 5rem 0;
+            text-align: center;
+        }
+        
+        .cta-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+        
+        .cta-subtitle {
+            font-size: 1.25rem;
+            margin-bottom: 2.5rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .bg-white {
+            background-color: white;
+        }
+        
+        .bg-gray {
+            background-color: #f8fafc;
+        }
+        
+        @media (max-width: 1024px) {
+            .timeline::after {
+                left: 31px;
+            }
+            
+            .timeline-container {
+                width: 100%;
+                padding-left: 70px;
+                padding-right: 25px;
+            }
+            
+            .timeline-container.right {
+                left: 0;
+            }
+        }
+        
+        @media (max-width: 991px) {
+            .grid-cols-3 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            
+            .hero-content {
+                flex-direction: column;
+                gap: 2rem;
+            }
+            
+            .footer-links {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .grid-cols-2 {
+                grid-template-columns: repeat(1, minmax(0, 1fr));
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background-color: white;
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                z-index: 100;
+            }
+            
+            .nav-links.active {
+                display: flex;
+            }
+            
+            .hero {
+                padding: 4rem 0;
+            }
+            
+            .section {
+                padding: 3rem 0;
+            }
+            
+            .section-title {
+                font-size: 1.875rem;
+            }
+            
+            /* Hide the Contact Us button text on small screens, show only on larger screens */
+            .nav-right .btn span {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .grid-cols-3 {
+                grid-template-columns: repeat(1, minmax(0, 1fr));
+            }
+            
+            .footer-links {
+                grid-template-columns: repeat(1, 1fr);
+            }
+            
+            .hero {
+                padding: 3rem 0;
+            }
+            
+            .section {
+                padding: 2.5rem 0;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
+            }
+            
+            .btn {
+                padding: 0.625rem 1.25rem;
+            }
+            
+            .btn-lg {
+                padding: 0.75rem 1.5rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="#" class="logo">
+                    <span>Actua</span>mind
+                </a>
+                <div class="nav-links" id="navLinks">
+                    <a href="#video-showcase">See In Action</a>
+                    <a href="#features">Features</a>
+                    <a href="#how-it-works">How It Works</a>
+                    <a href="#problem">Why</a>
+                    <a href="#roadmap">Roadmap</a>
+                    <a href="#faq">FAQ</a>
+                </div>
+                <div class="nav-right">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <a href="#contact" class="btn btn-primary">Contact Us</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1 class="text-4xl font-bold mb-4 leading-tight">Autonomous Software Engineering Intelligence</h1>
+                    <p class="text-lg text-gray mb-8">Actuamind transforms how engineering teams understand and interact with their software ecosystems through an intelligent knowledge system and autonomous engineering assistant.</p>
+                    <div class="flex gap-4">
+                        <a href="#contact" class="btn btn-primary btn-lg">Get Started</a>
+                        <a href="#features" class="btn btn-outlined btn-lg">Learn More</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="video-showcase" class="section bg-gray py-16">
+        <div class="container text-center">
+            <h2 class="section-title">See Actuamind in Action</h2>
+            <p class="section-subtitle mx-auto mb-8">Watch our demo video to see how Actuamind transforms software engineering intelligence</p>
+            
+            <div align="center">
+                <a href="https://www.youtube.com/watch?v=TBjGveJrfo0" target="_blank">
+                    <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Actuamind - Autonomous Software Engineering Intelligence" width="600" class="rounded-xl shadow-lg" />
+                </a>
+                <br>
+                <a href="https://www.youtube.com/watch?v=TBjGveJrfo0" target="_blank" class="mt-4 inline-block">
+                    <img src="https://img.shields.io/badge/▶-Watch_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Video" width="180">
+                </a>
+            </div>
+        </div>
+    </section>
+    
+    <section id="features" class="section bg-white">
+        <div class="container">
+            <h2 class="section-title text-center">Dual Function Intelligence</h2>
+            <p class="section-subtitle text-center mx-auto">Actuamind serves two essential functions that work together to enhance your engineering experience</p>
+            
+            <div class="grid grid-cols-2 gap-8 mt-12">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Intelligent Knowledge System</h3>
+                    <p class="mb-4">Actuamind creates a comprehensive, interconnected map of your entire software landscape by indexing, analyzing, and connecting information across code repositories, documentation, and team structures.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Maps all repositories and documentation</li>
+                        <li><i class="fas fa-check"></i> Connects interdependent services</li>
+                        <li><i class="fas fa-check"></i> Understands code structure and meaning</li>
+                        <li><i class="fas fa-check"></i> Enables natural language queries</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Autonomous Engineering Assistant</h3>
+                    <p class="mb-4">Building on deep knowledge, Actuamind will actively participate in the software development lifecycle by automating routine tasks, implementing code changes, and providing operational support.</p>
+                    <p class="text-sm text-gray italic mb-4">*Note: These agentic capabilities are on our roadmap and not yet implemented in the current version.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Automates repetitive tasks</li>
+                        <li><i class="fas fa-check"></i> Implements code changes</li>
+                        <li><i class="fas fa-check"></i> Provides 24/7 operational support</li>
+                        <li><i class="fas fa-check"></i> Accelerates onboarding</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="current-features" class="section bg-gray">
+        <div class="container">
+            <h2 class="section-title text-center">Current Features</h2>
+            <p class="section-subtitle text-center mx-auto">Our platform already delivers powerful capabilities to enhance your engineering experience</p>
+            
+            <div class="grid grid-cols-3 gap-6 mt-12">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-3">Multi-Repository Management</h3>
+                    <p>Add and manage multiple code repositories in one knowledge graph, with support for switching contexts and tracking ingestion progress.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-3">Advanced Code Analysis</h3>
+                    <p>Structural parsing for Python, Go, C#, Java, and JavaScript with support for Git repositories and branch selection.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-3">Knowledge Processing</h3>
+                    <p>Chunks code into semantic units, generates vector embeddings, and loads structural data into Neo4j Graph and Vector Index.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-3">Intelligent Interface</h3>
+                    <p>FastAPI backend with LangGraph agent orchestrating RAG using semantic vector search on code chunks.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-3">Natural Language Queries</h3>
+                    <p>Ask questions about architecture, code structure, functionality, or specific components in plain English.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-desktop"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-3">Streamlined UI</h3>
+                    <p>Intuitive Streamlit web interface for interacting with your knowledge graph and managing repositories.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="problem" class="section bg-white">
+        <div class="container">
+            <h2 class="section-title">The Problem We Solve</h2>
+            <p class="section-subtitle">Navigating your company's software ecosystem is increasingly challenging due to numerous factors</p>
+            
+            <div class="grid grid-cols-2 gap-8 mt-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title">Knowledge Fragmentation</h3>
+                        <p class="card-text">Documentation is often outdated, incomplete, or scattered across multiple systems, making it difficult to find critical information.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title">Context Loss</h3>
+                        <p class="card-text">Critical insights about code structure and decisions are lost during team transitions, leading to repeated mistakes and inefficiencies.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title">Manual Overhead</h3>
+                        <p class="card-text">Engineers spend excessive time understanding code before making changes, slowing down development and feature delivery.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title">Limited Automation</h3>
+                        <p class="card-text">Existing tools can detect issues but can't autonomously fix them, requiring constant human intervention.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title">Operational Burden</h3>
+                        <p class="card-text">On-call rotations and support responsibilities create burnout and context switching, reducing overall productivity.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title">Lengthy Onboarding</h3>
+                        <p class="card-text">New team members take months to become productive, with both technical and non-technical staff struggling to navigate complex systems.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="section bg-gray">
+        <div class="container">
+            <h2 class="section-title text-center">How Actuamind Works</h2>
+            <p class="section-subtitle text-center mx-auto">Our platform creates a comprehensive knowledge graph of your software ecosystem and enables natural language interaction</p>
+            
+            <div class="grid grid-cols-1 gap-8 mt-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="card-title mb-4">Architecture Overview</h3>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-database"></i> <strong>Data Layer:</strong> Neo4j (Graph Database + Vector Index)</li>
+                            <li><i class="fas fa-code-branch"></i> <strong>Ingestion Layer:</strong> Python scripts using GitPython, Tree-sitter, Sentence-Transformers/OpenAI client, Neo4j driver</li>
+                            <li><i class="fas fa-cogs"></i> <strong>Processing/Query Layer:</strong> LangChain & LangGraph defining the agent workflow and tools</li>
+                            <li><i class="fas fa-server"></i> <strong>API Layer:</strong> FastAPI serving the agent</li>
+                            <li><i class="fas fa-desktop"></i> <strong>Presentation Layer:</strong> Streamlit providing the web interface</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="roadmap" class="section bg-white">
+        <div class="container">
+            <h2 class="section-title text-center">Roadmap</h2>
+            <p class="section-subtitle text-center mx-auto">Our development journey is focused on bringing autonomous capabilities to your engineering process</p>
+            
+            <div class="grid grid-cols-2 gap-8 mt-12">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-plug"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">External Systems Integration</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> JIRA ticket ingestion to connect code with task context</li>
+                        <li><i class="fas fa-check"></i> Confluence documentation integration</li>
+                        <li><i class="fas fa-check"></i> Unified querying across code, tickets, and documentation</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Agentic Capabilities Integration</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> AI agents for autonomous code analysis</li>
+                        <li><i class="fas fa-check"></i> Reasoning layer for knowledge-to-action</li>
+                        <li><i class="fas fa-check"></i> Proactive recommendations</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">Autonomous Engineering Features</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Task execution agents for Jira tickets</li>
+                        <li><i class="fas fa-check"></i> Documentation-to-code implementation</li>
+                        <li><i class="fas fa-check"></i> Support agents for technical questions</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-network-wired"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-4">DevOps Integration</h3>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Context-aware alert analysis</li>
+                        <li><i class="fas fa-check"></i> CI/CD pipeline integration</li>
+                        <li><i class="fas fa-check"></i> System health monitoring</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq" class="section bg-gray">
+        <div class="container">
+            <h2 class="section-title text-center">Frequently Asked Questions</h2>
+            <p class="section-subtitle text-center mx-auto">Get answers to common questions about Actuamind</p>
+            
+            <div class="max-w-3xl mx-auto mt-12">
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>Does Actuamind require access to my repository history?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Yes, Actuamind needs Git access to build a comprehensive knowledge graph of your codebase.
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>Can Actuamind work with private repositories?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Absolutely! All data is processed locally or within your infrastructure, ensuring security.
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>How does Actuamind differ from traditional documentation tools?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Actuamind not only indexes documentation but understands code semantics and can take autonomous actions based on this knowledge.
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>What programming languages are supported?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Currently Python, Go, C#, Java, and JavaScript. More languages will be added in future releases.
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>Do I need an OpenAI API key?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="faq-answer">
+                        Yes, the current version requires an OpenAI API key for the LLM agent and potentially for embeddings.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta" id="contact">
+        <div class="container">
+            <h2 class="cta-title">Ready to Transform Your Engineering Experience?</h2>
+            <p class="cta-subtitle">Get started with Actuamind today and unlock the power of autonomous software engineering intelligence.</p>
+            <a href="mailto:contact@actuamind.com" class="btn btn-primary btn-lg">Contact Us</a>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <div class="footer-column">
+                    <h3>Actuamind</h3>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#how-it-works">How It Works</a></li>
+                        <li><a href="#roadmap">Roadmap</a></li>
+                        <li><a href="#faq">FAQ</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>Resources</h3>
+                    <ul>
+                        <li><a href="#">Documentation</a></li>
+                        <li><a href="#">API Reference</a></li>
+                        <li><a href="#">Tutorials</a></li>
+                        <li><a href="#">Blog</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>Company</h3>
+                    <ul>
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-column">
+                    <h3>Connect</h3>
+                    <ul>
+                        <li><a href="#">Twitter</a></li>
+                        <li><a href="#">LinkedIn</a></li>
+                        <li><a href="#">GitHub</a></li>
+                        <li><a href="#">YouTube</a></li>
+                    </ul>
+                    
+                    <div class="social-links mt-4">
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-linkedin"></i></a>
+                        <a href="#"><i class="fab fa-github"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p>&copy; 2025 Actuamind. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <div class="scroll-to-top">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+
+    <script>
+        // Mobile Menu Toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const navLinks = document.getElementById('navLinks');
+            
+            if (mobileMenuBtn && navLinks) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    navLinks.classList.toggle('active');
+                    // Toggle icon between bars and times
+                    const icon = mobileMenuBtn.querySelector('i');
+                    if (icon.classList.contains('fa-bars')) {
+                        icon.classList.remove('fa-bars');
+                        icon.classList.add('fa-times');
+                    } else {
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                });
+                
+                // Close menu when clicking outside
+                document.addEventListener('click', function(event) {
+                    if (!mobileMenuBtn.contains(event.target) && !navLinks.contains(event.target) && navLinks.classList.contains('active')) {
+                        navLinks.classList.remove('active');
+                        const icon = mobileMenuBtn.querySelector('i');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    }
+                });
+                
+                // Close menu when clicking on a nav link
+                const links = navLinks.querySelectorAll('a');
+                links.forEach(link => {
+                    link.addEventListener('click', function() {
+                        navLinks.classList.remove('active');
+                        const icon = mobileMenuBtn.querySelector('i');
+                        icon.classList.remove('fa-times');
+                        icon.classList.add('fa-bars');
+                    });
+                });
+            }
+        });
+        
+        // FAQ Accordion
+        document.addEventListener('DOMContentLoaded', function() {
+            const faqQuestions = document.querySelectorAll('.faq-question');
+            
+            faqQuestions.forEach(question => {
+                question.addEventListener('click', () => {
+                    const answer = question.nextElementSibling;
+                    const icon = question.querySelector('i');
+                    
+                    // Toggle answer visibility
+                    if (answer.style.maxHeight) {
+                        answer.style.maxHeight = null;
+                        icon.classList.remove('fa-chevron-up');
+                        icon.classList.add('fa-chevron-down');
+                    } else {
+                        answer.style.maxHeight = answer.scrollHeight + 'px';
+                        icon.classList.remove('fa-chevron-down');
+                        icon.classList.add('fa-chevron-up');
+                    }
+                });
+            });
+        });
+        
+        // Scroll to Top Button
+        document.addEventListener('DOMContentLoaded', function() {
+            const scrollToTopBtn = document.querySelector('.scroll-to-top');
+            
+            window.addEventListener('scroll', () => {
+                if (window.pageYOffset > 300) {
+                    scrollToTopBtn.classList.add('visible');
+                } else {
+                    scrollToTopBtn.classList.remove('visible');
+                }
+            });
+            
+            scrollToTopBtn.addEventListener('click', () => {
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
+            });
+        });
+        
+        // Smooth Scrolling for Anchor Links
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const targetId = this.getAttribute('href');
+                    if (targetId === '#') return;
+                    
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
