@@ -856,13 +856,16 @@
             <p class="section-subtitle mx-auto mb-8">Watch our demo video to see how Actuamind transforms software engineering intelligence</p>
             
             <div align="center">
-                <a href="https://www.youtube.com/watch?v=TBjGveJrfo0" target="_blank">
-                    <img src="https://img.youtube.com/vi/TBjGveJrfo0/maxresdefault.jpg" alt="Actuamind - Autonomous Software Engineering Intelligence" width="600" class="rounded-xl shadow-lg" />
-                </a>
-                <br>
-                <a href="https://www.youtube.com/watch?v=TBjGveJrfo0" target="_blank" class="mt-4 inline-block">
-                    <img src="https://img.shields.io/badge/▶-Watch_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Video" width="180">
-                </a>
+                <div class="video-wrapper" style="max-width: 800px; margin: 0 auto; position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);">
+                    <iframe 
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;"
+                        src="https://www.youtube.com/embed/TBjGveJrfo0" 
+                        title="Actuamind - Autonomous Software Engineering Intelligence" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                        allowfullscreen>
+                    </iframe>
+                </div>
             </div>
         </div>
     </section>
@@ -1013,26 +1016,361 @@
         </div>
     </section>
 
-    <section id="how-it-works" class="section bg-gray">
+    <section id="how-it-works" class="section bg-white py-20">
         <div class="container">
             <h2 class="section-title text-center">How Actuamind Works</h2>
-            <p class="section-subtitle text-center mx-auto">Our platform creates a comprehensive knowledge graph of your software ecosystem and enables natural language interaction</p>
+            <p class="section-subtitle text-center mx-auto">Our intelligent platform creates a comprehensive knowledge graph of your software ecosystem and enables powerful interactions</p>
             
-            <div class="grid grid-cols-1 gap-8 mt-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h3 class="card-title mb-4">Architecture Overview</h3>
-                        <ul class="feature-list">
-                            <li><i class="fas fa-database"></i> <strong>Data Layer:</strong> Neo4j (Graph Database + Vector Index)</li>
-                            <li><i class="fas fa-code-branch"></i> <strong>Ingestion Layer:</strong> Python scripts using GitPython, Tree-sitter, Sentence-Transformers/OpenAI client, Neo4j driver</li>
-                            <li><i class="fas fa-cogs"></i> <strong>Processing/Query Layer:</strong> LangChain & LangGraph defining the agent workflow and tools</li>
-                            <li><i class="fas fa-server"></i> <strong>API Layer:</strong> FastAPI serving the agent</li>
-                            <li><i class="fas fa-desktop"></i> <strong>Presentation Layer:</strong> Streamlit providing the web interface</li>
-                        </ul>
+            <div class="workflow-container mt-16">
+                <!-- Step 1 -->
+                <div class="workflow-step">
+                    <div class="workflow-number">1</div>
+                    <div class="workflow-content">
+                        <div class="workflow-icon">
+                            <i class="fas fa-code-branch"></i>
+                        </div>
+                        <h3 class="workflow-title">Data Ingestion</h3>
+                        <p class="workflow-description">
+                            Actuamind connects to your repositories, documentation, and team systems to collect and process all information about your software ecosystem.
+                        </p>
+                        <div class="workflow-details">
+                            <ul class="feature-list">
+                                <li><i class="fas fa-check"></i> Multi-repository support with branch selection</li>
+                                <li><i class="fas fa-check"></i> Support for Python, Go, C#, Java, and JavaScript</li>
+                                <li><i class="fas fa-check"></i> Parses code structure and relationships</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 2 -->
+                <div class="workflow-step">
+                    <div class="workflow-number">2</div>
+                    <div class="workflow-content">
+                        <div class="workflow-icon">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <h3 class="workflow-title">Knowledge Processing</h3>
+                        <p class="workflow-description">
+                            Raw data is processed into a comprehensive knowledge graph that maps relationships between code, documentation, and team structures.
+                        </p>
+                        <div class="workflow-details">
+                            <ul class="feature-list">
+                                <li><i class="fas fa-check"></i> Chunks code into semantic units</li>
+                                <li><i class="fas fa-check"></i> Generates vector embeddings for semantic search</li>
+                                <li><i class="fas fa-check"></i> Creates graph relationships in Neo4j</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 3 -->
+                <div class="workflow-step">
+                    <div class="workflow-number">3</div>
+                    <div class="workflow-content">
+                        <div class="workflow-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h3 class="workflow-title">Intelligent Query Processing</h3>
+                        <p class="workflow-description">
+                            The LangGraph agent orchestrates sophisticated query processing to provide context-aware answers about your systems.
+                        </p>
+                        <div class="workflow-details">
+                            <ul class="feature-list">
+                                <li><i class="fas fa-check"></i> Natural language understanding</li>
+                                <li><i class="fas fa-check"></i> Retrieval-Augmented Generation (RAG)</li>
+                                <li><i class="fas fa-check"></i> Context-aware responses</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 4 -->
+                <div class="workflow-step">
+                    <div class="workflow-number">4</div>
+                    <div class="workflow-content">
+                        <div class="workflow-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h3 class="workflow-title">Action & Automation <span class="soon-tag">Coming Soon</span></h3>
+                        <p class="workflow-description">
+                            Building on its knowledge graph, Actuamind will autonomously execute tasks, implement code changes, and provide operational support.
+                        </p>
+                        <div class="workflow-details">
+                            <ul class="feature-list">
+                                <li><i class="fas fa-check"></i> Autonomous code changes</li>
+                                <li><i class="fas fa-check"></i> 24/7 operational support</li>
+                                <li><i class="fas fa-check"></i> Intelligent task execution</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="architecture-overview mt-16 p-8 rounded-xl bg-gray shadow-lg">
+                <h3 class="text-xl font-bold mb-6 text-center">Architecture Overview</h3>
+                <div class="grid grid-cols-5 gap-4">
+                    <div class="arch-component">
+                        <div class="arch-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="arch-name">Data Layer</div>
+                        <div class="arch-tech">Neo4j Graph DB + Vector Index</div>
+                    </div>
+                    
+                    <div class="arch-component">
+                        <div class="arch-icon">
+                            <i class="fas fa-file-import"></i>
+                        </div>
+                        <div class="arch-name">Ingestion Layer</div>
+                        <div class="arch-tech">GitPython, Tree-sitter</div>
+                    </div>
+                    
+                    <div class="arch-component">
+                        <div class="arch-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <div class="arch-name">Processing Layer</div>
+                        <div class="arch-tech">LangChain & LangGraph</div>
+                    </div>
+                    
+                    <div class="arch-component">
+                        <div class="arch-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <div class="arch-name">API Layer</div>
+                        <div class="arch-tech">FastAPI</div>
+                    </div>
+                    
+                    <div class="arch-component">
+                        <div class="arch-icon">
+                            <i class="fas fa-desktop"></i>
+                        </div>
+                        <div class="arch-name">UI Layer</div>
+                        <div class="arch-tech">Streamlit</div>
                     </div>
                 </div>
             </div>
         </div>
+        
+        <style>
+            .workflow-container {
+                position: relative;
+            }
+            
+            .workflow-container::before {
+                content: '';
+                position: absolute;
+                top: 40px;
+                bottom: 40px;
+                left: 40px;
+                width: 4px;
+                background: linear-gradient(to bottom, #2563eb, #0ea5e9);
+                z-index: 1;
+            }
+            
+            .workflow-step {
+                display: flex;
+                margin-bottom: 3rem;
+                position: relative;
+            }
+            
+            .workflow-step:last-child {
+                margin-bottom: 0;
+            }
+            
+            .workflow-number {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 80px;
+                height: 80px;
+                background: linear-gradient(to right, #2563eb, #0ea5e9);
+                color: white;
+                border-radius: 50%;
+                font-size: 1.75rem;
+                font-weight: 700;
+                position: relative;
+                z-index: 2;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            }
+            
+            .workflow-content {
+                flex: 1;
+                padding-left: 2rem;
+                padding-top: 0.5rem;
+            }
+            
+            .workflow-icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 4rem;
+                height: 4rem;
+                border-radius: 9999px;
+                background-color: #e0f2fe;
+                color: var(--secondary);
+                margin-bottom: 1rem;
+                font-size: 1.75rem;
+            }
+            
+            .workflow-title {
+                font-size: 1.5rem;
+                font-weight: 700;
+                margin-bottom: 0.75rem;
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+            }
+            
+            .soon-tag {
+                font-size: 0.75rem;
+                font-weight: 500;
+                background-color: #0ea5e9;
+                color: white;
+                padding: 0.25rem 0.5rem;
+                border-radius: 9999px;
+                vertical-align: middle;
+            }
+            
+            .workflow-description {
+                font-size: 1.1rem;
+                color: var(--gray);
+                margin-bottom: 1rem;
+                max-width: 80%;
+            }
+            
+            .workflow-details {
+                background-color: #f8fafc;
+                border-radius: 0.5rem;
+                padding: 1rem 1.5rem;
+            }
+            
+            .architecture-overview {
+                background-color: #f8fafc;
+            }
+            
+            .arch-component {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                background-color: white;
+                padding: 1.5rem 1rem;
+                border-radius: 0.5rem;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+            
+            .arch-component:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            }
+            
+            .arch-icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 3rem;
+                height: 3rem;
+                border-radius: 9999px;
+                background: linear-gradient(135deg, #2563eb, #0ea5e9);
+                color: white;
+                margin-bottom: 1rem;
+                font-size: 1.25rem;
+            }
+            
+            .arch-name {
+                font-weight: 600;
+                margin-bottom: 0.5rem;
+            }
+            
+            .arch-tech {
+                font-size: 0.875rem;
+                color: var(--gray);
+            }
+            
+            @media (max-width: 991px) {
+                .workflow-number {
+                    width: 60px;
+                    height: 60px;
+                    font-size: 1.5rem;
+                }
+                
+                .workflow-container::before {
+                    left: 30px;
+                }
+                
+                .workflow-description {
+                    max-width: 100%;
+                }
+                
+                .grid-cols-5 {
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 1rem;
+                }
+                
+                .arch-component {
+                    margin-bottom: 1rem;
+                }
+            }
+            
+            @media (max-width: 768px) {
+                .workflow-container::before {
+                    left: 25px;
+                }
+                
+                .workflow-number {
+                    width: 50px;
+                    height: 50px;
+                    font-size: 1.25rem;
+                }
+                
+                .workflow-content {
+                    padding-left: 1.5rem;
+                }
+                
+                .workflow-icon {
+                    width: 3rem;
+                    height: 3rem;
+                    font-size: 1.5rem;
+                }
+                
+                .workflow-title {
+                    font-size: 1.25rem;
+                }
+                
+                .workflow-description {
+                    font-size: 1rem;
+                }
+                
+                .grid-cols-5 {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+            }
+            
+            @media (max-width: 576px) {
+                .workflow-container::before {
+                    display: none;
+                }
+                
+                .workflow-step {
+                    flex-direction: column;
+                }
+                
+                .workflow-number {
+                    margin-bottom: 1rem;
+                }
+                
+                .workflow-content {
+                    padding-left: 0;
+                }
+                
+                .grid-cols-5 {
+                    grid-template-columns: repeat(1, 1fr);
+                }
+            }
+        </style>
     </section>
 
     <section id="roadmap" class="section bg-white">
@@ -1155,7 +1493,7 @@
         <div class="container">
             <h2 class="cta-title">Ready to Transform Your Engineering Experience?</h2>
             <p class="cta-subtitle">Get started with Actuamind today and unlock the power of autonomous software engineering intelligence.</p>
-            <a href="mailto:actuamind@gmail.com" class="btn btn-primary btn-lg">Contact Us</a>
+            <a href="mailto:contact@actuamind.com" class="btn btn-primary btn-lg">Contact Us</a>
         </div>
     </section>
 
