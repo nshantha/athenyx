@@ -36,6 +36,8 @@ By combining advanced knowledge representation with agentic capabilities, Actuam
 - [Project Structure](#project-structure-brief)
 - [FAQ](#faq)
 - [Next Steps / Future Enhancements](#next-steps--future-enhancements)
+- [Ontology](#ontology)
+- [Testing](#testing)
 
 ## The Problem
 Navigating your company's software ecosystem is increasingly challenging due to:
@@ -216,17 +218,32 @@ Requires managing the Neo4j instance and Python processes separately.
 
 3. **Configure .env**: Make sure `NEO4J_URI` points to your local/cloud Neo4j instance and `BACKEND_API_URL` is `http://localhost:8000`.
 
-4. **Run Backend API**:
+4. **Ingesting Repositories**: 
+   * Use the recommended comprehensive ingestion pipeline:
+     ```bash
+     poetry run python -m ingestion.main --repos https://github.com/your-repo-url.git
+     ```
+   * This creates a complete ontology structure with proper relationships between files, classes, functions, and code chunks.
+   * For multiple repositories, use space-separated URLs:
+     ```bash
+     poetry run python -m ingestion.main --repos https://github.com/repo1.git https://github.com/repo2.git
+     ```
+   * Legacy ingestion is still available but not recommended:
+     ```bash
+     poetry run python -m ingestion.main --legacy
+     ```
+
+5. **Run Backend API**:
    * Open a new terminal
    * Run: `poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
    * Keep this terminal running
 
-5. **Run Frontend UI**:
+6. **Run Frontend UI**:
    * Open a third terminal
    * Run: `poetry run streamlit run ui/app.py --server.port 8501`
    * Keep this terminal running
 
-6. **Access Services**:
+7. **Access Services**:
    * Frontend UI: http://localhost:8501
    * Backend API Docs: http://localhost:8000/docs
    * Neo4j Browser: Access your local/cloud instance directly via its specific URL/port
@@ -358,6 +375,38 @@ A: Yes, the current version requires an OpenAI API key for the LLM agent and pot
   * Develop cross-company knowledge graphs for enterprise deployments
   * Implement code reuse recommendations across systems
   * Enable architecture optimization suggestions based on patterns across repositories
+
+## Ontology
+
+The system uses a hierarchical knowledge graph structure stored in Neo4j with the following structure:
+
+```
+Repository
+  ├── File
+  │    ├── Function
+  │    │    └── CodeChunk (with embeddings)
+  │    ├── Class
+  │    │    └── CodeChunk (with embeddings)
+  │    └── CodeChunk (with embeddings)
+  │
+  ├── Service
+  │    ├── ApiEndpoint
+  │    │    └── Parameters/ReturnTypes
+  │    ├── DataModel
+  │    └── ServiceInterface
+  │
+  └── Dependencies
+       ├── ExternalDependency
+       └── ConfigurationDependency
+```
+
+### Relationship Types:
+- **BELONGS_TO**: Connects entities to their parent repository or service
+- **CONTAINS**: Links files to functions/classes, and functions/classes/files to code chunks
+- **CALLS**: Connects services that interact with each other 
+- **EXPOSES**: Links services to their API endpoints
+- **USES_MODEL**: Connects services to data models they use
+- **IMPLEMENTS**: Links services to interfaces they implement
 
 ## Contributing
 We welcome contributions to Actuamind! Whether it's bug reports, feature requests, or code contributions, your help is appreciated.

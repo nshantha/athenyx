@@ -27,6 +27,10 @@ class Neo4jManager:
                 logger.error(f"Failed to connect to Neo4j: {e}", exc_info=True)
                 raise
 
+    def is_connected(self) -> bool:
+        """Checks if the Neo4j connection is established."""
+        return self._driver is not None
+
     async def close(self):
         """Closes the connection to the Neo4j database."""
         if self._driver:
@@ -73,15 +77,34 @@ class Neo4jManager:
         """Creates necessary constraints and indexes if they don't exist."""
         logger.info("Ensuring Neo4j constraints and vector index...")
         constraint_queries = [
+            # Core entity constraints
             "CREATE CONSTRAINT IF NOT EXISTS FOR (r:Repository) REQUIRE r.url IS UNIQUE",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (s:Service) REQUIRE s.name IS UNIQUE",
             "CREATE CONSTRAINT IF NOT EXISTS FOR (f:File) REQUIRE f.path IS UNIQUE", # Unique within the repo context ideally, simple approach first
             "CREATE CONSTRAINT IF NOT EXISTS FOR (fn:Function) REQUIRE fn.unique_id IS UNIQUE", # Requires generating a unique ID
             "CREATE CONSTRAINT IF NOT EXISTS FOR (cl:Class) REQUIRE cl.unique_id IS UNIQUE", # Requires generating a unique ID
             "CREATE CONSTRAINT IF NOT EXISTS FOR (cc:CodeChunk) REQUIRE cc.chunk_id IS UNIQUE", # Requires generating a unique ID
+            
+            # Service-related constraints
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (api:ApiEndpoint) REQUIRE (api.name, api.repo_url) IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (dm:DataModel) REQUIRE (dm.name, dm.repo_url) IS NODE KEY",
+            "CREATE CONSTRAINT IF NOT EXISTS FOR (si:ServiceInterface) REQUIRE si.name IS UNIQUE",
         ]
+        
+        # Create indexes for frequently queried properties
+        index_queries = [
+            "CREATE INDEX service_name_idx IF NOT EXISTS FOR (s:Service) ON (s.name)",
+            "CREATE INDEX repo_url_idx IF NOT EXISTS FOR (r:Repository) ON (r.url)",
+            "CREATE INDEX file_path_idx IF NOT EXISTS FOR (f:File) ON (f.path)",
+            "CREATE INDEX function_name_idx IF NOT EXISTS FOR (fn:Function) ON (fn.name)",
+            "CREATE INDEX class_name_idx IF NOT EXISTS FOR (cl:Class) ON (cl.name)",
+            "CREATE INDEX api_path_idx IF NOT EXISTS FOR (api:ApiEndpoint) ON (api.api_path)",
+            "CREATE INDEX datamodel_name_idx IF NOT EXISTS FOR (dm:DataModel) ON (dm.name)",
+        ]
+        
         # Vector Index (adjust name and dimensions as needed)
         vector_index_query = f"""
-        CREATE VECTOR INDEX `code_chunk_embeddings` IF NOT EXISTS
+        CREATE VECTOR INDEX code_chunk_embeddings IF NOT EXISTS
         FOR (c:CodeChunk) ON (c.embedding)
         OPTIONS {{ indexConfig: {{
             `vector.dimensions`: {dimensions},
@@ -90,27 +113,54 @@ class Neo4jManager:
         """
 
         async with self.get_session() as session:
+            # Create constraints
             for query in constraint_queries:
                 try:
                     logger.debug(f"Running: {query}")
                     await session.run(query)
                 except Exception as e:
                     logger.warning(f"Could not create constraint (may already exist): {e}")
+            
+            # Create indexes
+            for query in index_queries:
+                try:
+                    logger.debug(f"Running: {query}")
+                    await session.run(query)
+                except Exception as e:
+                    logger.warning(f"Could not create index (may already exist): {e}")
+            
+            # Create vector index
             try:
                 logger.debug(f"Running: {vector_index_query}")
                 await session.run(vector_index_query)
             except Exception as e:
                 logger.warning(f"Could not create vector index: {e}")
+                
         logger.info("Constraints and vector index check complete.")
 
     async def get_repository_status(self, repo_url: str) -> Optional[str]:
-        """Gets the last indexed commit SHA for a repository."""
-        query = "MATCH (r:Repository {url: $repo_url}) RETURN r.last_indexed_commit_sha AS sha"
-        parameters = {"repo_url": repo_url}
-        async with self.get_session() as session:
-            result = await session.run(query, parameters)
-            record = await result.single()
-            return record["sha"] if record else None
+        """
+        Get the last indexed commit SHA for a repository.
+        
+        Args:
+            repo_url: URL of the repository
+            
+        Returns:
+            Last indexed commit SHA or None if not indexed
+        """
+        query = """
+        MATCH (r:Repository {url: $repo_url})
+        RETURN r.last_indexed_commit_sha as commit_sha
+        """
+        
+        try:
+            result = await self.run_query(query, {"repo_url": repo_url})
+            if result and len(result) > 0:
+                return result[0].get("commit_sha")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting repository status: {e}", exc_info=True)
+            return None
 
     async def clear_repository_data(self, repo_url: str):
         """Deletes all nodes and relationships associated with a specific repository."""
@@ -132,7 +182,13 @@ class Neo4jManager:
     async def batch_merge_nodes_relationships(self, batch: List[Dict[str, Any]]):
         """
         Merges nodes and relationships in batches using UNWIND.
-        # ... (docstring) ...
+        
+        Args:
+            batch: List of operations, each containing a query template and items list
+                  Format: [{'query': 'MERGE (n:Node) ...', 'items': [{...}, {...}]}]
+                  
+        Returns:
+            None
         """
         async with self.get_session() as session:
             # --- FIX: Add 'await' here ---
@@ -140,16 +196,35 @@ class Neo4jManager:
                 for operation in batch:
                     query_template = operation['query']
                     items_list = operation['items']
-                    if items_list:
-                        full_query = f"UNWIND $items AS item\n{query_template}"
-                        try:
-                            # Run within the transaction 'tx'
-                            await tx.run(full_query, items=items_list)
-                        except Exception as e:
-                            logger.error(f"Error in batch operation. Query template: {query_template}, Error: {e}", exc_info=True)
-                            # Rollback the transaction on error
-                            await tx.rollback() # Explicitly rollback
-                            raise # Propagate error
+                    
+                    if not items_list:
+                        logger.warning(f"Skipping empty items list for query: {query_template[:50]}...")
+                        continue
+                        
+                    # Filter out any None values and ensure all items are valid dictionaries
+                    filtered_items = []
+                    for item in items_list:
+                        if item is None:
+                            logger.warning("Skipping None item in batch")
+                            continue
+                        # Ensure all values in the item are not None
+                        clean_item = {k: v for k, v in item.items() if v is not None}
+                        if clean_item:
+                            filtered_items.append(clean_item)
+                    
+                    if not filtered_items:
+                        logger.warning(f"All items were filtered out for query: {query_template[:50]}...")
+                        continue
+                        
+                    full_query = f"UNWIND $items AS item\n{query_template}"
+                    try:
+                        # Run within the transaction 'tx'
+                        await tx.run(full_query, items=filtered_items)
+                    except Exception as e:
+                        logger.error(f"Error in batch operation. Query template: {query_template}, Error: {e}", exc_info=True)
+                        # Rollback the transaction on error
+                        await tx.rollback() # Explicitly rollback
+                        raise # Propagate error
                 # Commit the transaction if loop completes without errors
                 await tx.commit()
 
@@ -165,40 +240,153 @@ class Neo4jManager:
 
 
     # --- Vector Search Function (Placeholder for Phase 3 RAG Tool) ---
-    async def vector_search_code_chunks(self, query_embedding: List[float], k: int = 5) -> List[Dict[str, Any]]:
-        """Performs vector similarity search on CodeChunk nodes."""
-        # Assumes 'code_chunk_embeddings' index exists
-        query = """
-            CALL db.index.vector.queryNodes('code_chunk_embeddings', $k, $embedding)
-            YIELD node, score
-            RETURN node.text AS text, node.path AS path, node.start_line AS start_line, score
+    async def vector_search_code_chunks(
+        self, 
+        query_embedding: List[float], 
+        k: int = 10,
+        repository_url: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
-        parameters = {"k": k, "embedding": query_embedding}
-        logger.debug(f"Performing vector search with k={k}")
+        Performs a vector similarity search in the Neo4j database.
+        
+        Args:
+            query_embedding: The embedding vector of the query
+            k: Number of results to return
+            repository_url: Optional URL of the repository to search in
+            
+        Returns:
+            List of dictionaries containing the search results
+        """
         try:
+            # First check if this is a project structure query
+            # If so, prioritize README files and other documentation
+            project_structure_keywords = ["structure", "architecture", "overview", "about", "project", "purpose"]
+            query_str = " ".join([str(x) for x in query_embedding[:20]])  # Use part of the embedding for keyword check
+            is_structure_query = any(keyword in query_str.lower() for keyword in project_structure_keywords)
+            
+            # If this is a project structure query, look for README files first
+            if is_structure_query:
+                logger.info("Detected project structure query, prioritizing README files")
+                
+                # Try to find README files first
+                direct_readme_query = """
+                MATCH (f:File)
+                WHERE 
+                    f.path CONTAINS 'README.md' OR 
+                    f.path CONTAINS 'README' OR
+                    f.is_documentation = true
+                """
+                
+                if repository_url:
+                    direct_readme_query += " AND f.repo_url = $repo_url"
+                    
+                direct_readme_query += """
+                WITH f
+                MATCH (f)-[:CONTAINS]->(cc:CodeChunk)
+                WHERE cc.embedding IS NOT NULL
+                RETURN cc.text AS text, 
+                       f.path AS path, 
+                       cc.start_line AS start_line, 
+                       0.95 AS score  // High score for README files
+                LIMIT $k
+                """
+                
+                params = {"k": k}
+                if repository_url:
+                    params["repo_url"] = repository_url
+                    
+                async with self.get_session() as session:
+                    result = await session.run(direct_readme_query, params)
+                    records = await result.data()
+                    
+                    # If we found README files, return them
+                    if records and len(records) > 0:
+                        logger.info(f"Found {len(records)} README/documentation files for structure query")
+                        return records
+                    
+                    # If not, continue with vector search but boost READMEs
+            
+            # Build the vector search query with optional repository filtering and README boosting
+            if repository_url:
+                query = """
+                MATCH (cc:CodeChunk)-[:BELONGS_TO]->(f:File)-[:BELONGS_TO]->(r:Repository {url: $repo_url})
+                WHERE cc.embedding IS NOT NULL
+                WITH cc, f, gds.similarity.cosine(cc.embedding, $query_embedding) AS base_score
+                
+                // Boost score for README files and documentation
+                WITH cc, f, base_score,
+                     CASE 
+                        WHEN f.path CONTAINS 'README.md' THEN base_score * 1.5
+                        WHEN f.path CONTAINS 'README' THEN base_score * 1.4
+                        WHEN f.is_documentation = true THEN base_score * 1.3
+                        WHEN f.path CONTAINS '/docs/' THEN base_score * 1.2
+                        ELSE base_score
+                     END AS score
+                WHERE score > 0.4  // Lower threshold to catch more potential matches
+                
+                RETURN cc.text AS text, 
+                       f.path AS path, 
+                       cc.start_line AS start_line, 
+                       score
+                ORDER BY score DESC
+                LIMIT $k
+                """
+                params = {"query_embedding": query_embedding, "k": k, "repo_url": repository_url}
+            else:
+                query = """
+                MATCH (cc:CodeChunk)-[:BELONGS_TO]->(f:File)
+                WHERE cc.embedding IS NOT NULL
+                WITH cc, f, gds.similarity.cosine(cc.embedding, $query_embedding) AS base_score
+                
+                // Boost score for README files and documentation
+                WITH cc, f, base_score,
+                     CASE 
+                        WHEN f.path CONTAINS 'README.md' THEN base_score * 1.5
+                        WHEN f.path CONTAINS 'README' THEN base_score * 1.4
+                        WHEN f.is_documentation = true THEN base_score * 1.3
+                        WHEN f.path CONTAINS '/docs/' THEN base_score * 1.2
+                        ELSE base_score
+                     END AS score
+                WHERE score > 0.4  // Lower threshold to catch more potential matches
+                
+                RETURN cc.text AS text, 
+                       f.path AS path, 
+                       cc.start_line AS start_line, 
+                       score
+                ORDER BY score DESC
+                LIMIT $k
+                """
+                params = {"query_embedding": query_embedding, "k": k}
+                
             async with self.get_session() as session:
-                result = await session.run(query, parameters)
+                result = await session.run(query, params)
                 records = await result.data()
-                logger.debug(f"Vector search returned {len(records)} results.")
+                logger.debug(f"Vector search returned {len(records)} results")
                 return records
         except Exception as e:
             logger.error(f"Error during vector search: {e}", exc_info=True)
             return []
 
-    async def query_high_level_info(self, topic: str, skip_faq: bool = False) -> List[Dict[str, Any]]:
+    async def query_high_level_info(self, topic: str, skip_faq: bool = False, repository_url: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Performs a specialized graph query to fetch high-level information directly from the database.
         
         Args:
             topic: The specific topic to query (e.g., "microservices", "architecture")
             skip_faq: Deprecated parameter, kept for backwards compatibility
+            repository_url: Optional repository URL to limit query scope
             
         Returns:
             List of result dictionaries with text and path information
         """
         logger.info(f"Performing specialized high-level query for topic: {topic}")
                 
-        # No FAQ system - always query the database directly
+        # Get active repository if none specified
+        if not repository_url:
+            active_repo = await self.get_active_repository()
+            if active_repo:
+                repository_url = active_repo.get('url')
+                logger.info(f"Using active repository: {repository_url}")
         
         # Customize query based on topic
         if topic == "microservices" or topic == "services":
@@ -211,13 +399,14 @@ class Neo4jManager:
                 cc.text CONTAINS 'microservice' OR
                 cc.text CONTAINS 'architecture'
             )
+            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
             RETURN 
                 cc.text AS text, 
-                cc.path AS path, 
+                f.path AS path, 
                 cc.start_line AS start_line,
                 CASE 
-                    WHEN cc.path CONTAINS 'README.md' THEN 2.0
-                    WHEN cc.path CONTAINS '/docs/' THEN 1.5
+                    WHEN f.path CONTAINS 'README.md' THEN 2.0
+                    WHEN f.path CONTAINS '/docs/' THEN 1.5
                     ELSE 1.0
                 END AS priority
             ORDER BY priority DESC
@@ -234,34 +423,104 @@ class Neo4jManager:
                 cc.text CONTAINS 'workflow' OR
                 cc.text CONTAINS 'design'
             )
+            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
             RETURN 
                 cc.text AS text, 
-                cc.path AS path, 
+                f.path AS path, 
                 cc.start_line AS start_line,
                 CASE 
-                    WHEN cc.path CONTAINS 'README.md' THEN 2.0
-                    WHEN cc.path CONTAINS '/docs/' THEN 1.5
+                    WHEN f.path CONTAINS 'README.md' THEN 2.0
+                    WHEN f.path CONTAINS '/docs/' THEN 1.5
                     ELSE 1.0
                 END AS priority
             ORDER BY priority DESC
             LIMIT 15
             """
+        elif topic == "project_structure":
+            # Enhanced query for project structure that uses multiple approaches
+            query = """
+            // First check README files directly without requiring keywords
+            MATCH (f:File)
+            WHERE f.path CONTAINS 'README.md' OR f.path ENDS WITH '/README' OR f.path ENDS WITH '/README.txt'
+            WITH f
+            MATCH (cc:CodeChunk)
+            WHERE (f)-[:CONTAINS]->(cc)
+            RETURN 
+                cc.text AS text, 
+                f.path AS path, 
+                cc.start_line AS start_line,
+                4.0 AS priority
+                
+            UNION
+                
+            // Look for files in docs directory
+            MATCH (f:File)
+            WHERE f.path CONTAINS '/docs/' AND (f.path ENDS WITH '.md' OR f.path ENDS WITH '.txt')
+            WITH f
+            MATCH (cc:CodeChunk)
+            WHERE (f)-[:CONTAINS]->(cc)
+            RETURN 
+                cc.text AS text, 
+                f.path AS path, 
+                cc.start_line AS start_line,
+                3.0 AS priority
+                
+            UNION
+                
+            // Analyze directory structure 
+            MATCH (f:File)
+            WITH split(f.path, '/') AS parts, count(*) AS file_count
+            WHERE size(parts) > 1
+            WITH parts[0] AS top_dir, count(*) AS file_count
+            ORDER BY file_count DESC
+            LIMIT 15
+            RETURN 
+                'Top-level directory: ' + top_dir + ' (contains ' + toString(file_count) + ' files)' AS text, 
+                'directory_structure' AS path, 
+                0 AS start_line,
+                2.0 AS priority
+                
+            UNION
+                
+            // Find documentation with structure keywords
+            MATCH (f:File)
+            WHERE f.is_documentation = true OR f.path ENDS WITH '.md'
+            WITH f
+            MATCH (cc:CodeChunk)
+            WHERE (f)-[:CONTAINS]->(cc)
+            AND (
+                cc.text CONTAINS 'project' OR
+                cc.text CONTAINS 'structure' OR
+                cc.text CONTAINS 'directory' OR
+                cc.text CONTAINS 'folder' OR
+                cc.text CONTAINS 'organization' OR
+                cc.text CONTAINS 'layout'
+            )
+            RETURN 
+                cc.text AS text, 
+                f.path AS path, 
+                cc.start_line AS start_line,
+                1.0 AS priority
+            ORDER BY priority DESC
+            LIMIT 30
+            """
         elif topic == "overview" or topic == "about":
             # General project overview information
             query = """
             MATCH (cc:CodeChunk)
+            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
             WHERE (
-                cc.path CONTAINS 'README.md' OR 
-                cc.path CONTAINS '/docs/' OR
-                cc.path ENDS WITH '.md'
+                f.path CONTAINS 'README.md' OR 
+                f.path CONTAINS '/docs/' OR
+                f.path ENDS WITH '.md'
             )
             RETURN 
                 cc.text AS text, 
-                cc.path AS path, 
+                f.path AS path, 
                 cc.start_line AS start_line,
                 CASE 
-                    WHEN cc.path CONTAINS 'README.md' THEN 2.0
-                    WHEN cc.path CONTAINS '/docs/' THEN 1.5
+                    WHEN f.path CONTAINS 'README.md' THEN 2.0
+                    WHEN f.path CONTAINS '/docs/' THEN 1.5
                     ELSE 1.0
                 END AS priority
             ORDER BY priority DESC
@@ -274,13 +533,14 @@ class Neo4jManager:
             MATCH (cc:CodeChunk)
             WHERE 
                 cc.text CONTAINS $topic
+            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
             RETURN 
                 cc.text AS text, 
-                cc.path AS path, 
+                f.path AS path, 
                 cc.start_line AS start_line,
                 CASE 
-                    WHEN cc.path CONTAINS 'README.md' THEN 2.0
-                    WHEN cc.path CONTAINS '/docs/' THEN 1.5
+                    WHEN f.path CONTAINS 'README.md' THEN 2.0
+                    WHEN f.path CONTAINS '/docs/' THEN 1.5
                     ELSE 1.0
                 END AS priority
             ORDER BY priority DESC
@@ -290,7 +550,10 @@ class Neo4jManager:
         try:
             async with self.get_session() as session:
                 # Pass topic parameter for the generic case
-                parameters = {"topic": topic} if topic not in ["microservices", "services", "architecture", "structure", "overview", "about"] else {}
+                parameters = {"topic": topic} if topic not in [
+                    "microservices", "services", "architecture", 
+                    "structure", "overview", "about", "project_structure"
+                ] else {}
                 result = await session.run(query, parameters)
                 records = await result.data()
                 logger.debug(f"Specialized query returned {len(records)} results for topic: {topic}")
@@ -341,11 +604,11 @@ class Neo4jManager:
             if query_type == "services":
                 # Find all services in the system by analyzing code structure and relationships
                 query = """
-                MATCH (f:File)-[:CONTAINS]->(fn:Function)
+                MATCH (fn:Function)
                 WHERE fn.name CONTAINS 'Service' OR fn.name CONTAINS 'service'
-                   OR f.path CONTAINS 'service' OR f.path CONTAINS 'Service'
-                WITH DISTINCT f.path AS service_file, collect(fn.name) AS functions
-                RETURN service_file, functions, size(functions) AS function_count
+                WITH fn
+                MATCH (f:File)-[:CONTAINS]->(fn)
+                RETURN f.path AS service_file, collect(fn.name) AS functions, size(collect(fn.name)) AS function_count
                 ORDER BY function_count DESC
                 LIMIT 20
                 """
@@ -353,10 +616,12 @@ class Neo4jManager:
             elif query_type == "dependencies":
                 # Try to identify dependencies between components
                 query = """
-                MATCH (f1:File)-[:CONTAINS]->(cc1:CodeChunk)
-                MATCH (f2:File)-[:CONTAINS]->(cc2:CodeChunk)
-                WHERE f1 <> f2 
-                   AND (cc1.text CONTAINS f2.path OR cc2.text CONTAINS f1.path)
+                MATCH (f1:File)
+                MATCH (f2:File)
+                WHERE f1 <> f2
+                MATCH (cc1:CodeChunk) WHERE (f1)-[:CONTAINS_CHUNK]->(cc1) OR (f1)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc1)
+                MATCH (cc2:CodeChunk) WHERE (f2)-[:CONTAINS_CHUNK]->(cc2) OR (f2)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc2)
+                WHERE cc1.text CONTAINS f2.path OR cc2.text CONTAINS f1.path
                 RETURN f1.path AS source, f2.path AS target, count(*) AS strength
                 ORDER BY strength DESC
                 LIMIT 25
@@ -384,7 +649,7 @@ class Neo4jManager:
                 """
                 
             else:
-                # Default to a simple file-function relationship query
+                # Default to a simple file-function relationship query that uses the correct relationship type
                 query = """
                 MATCH (f:File)-[:CONTAINS]->(fn:Function)
                 WITH f.path AS file_path, count(fn) AS function_count
@@ -400,8 +665,10 @@ class Neo4jManager:
                 # into each specific query type
                 keyword_conditions = " OR ".join([f"cc.text CONTAINS '{kw}'" for kw in keywords])
                 query = f"""
-                MATCH (f:File)-[:CONTAINS]->(cc:CodeChunk)
+                MATCH (cc:CodeChunk)
                 WHERE {keyword_conditions}
+                WITH cc
+                MATCH (f:File) WHERE (f)-[:CONTAINS_CHUNK]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
                 WITH DISTINCT f
                 {query}
                 """
@@ -428,19 +695,12 @@ class Neo4jManager:
         RETURN r.url as url, 
                r.service_name as service_name, 
                r.description as description,
-               r.last_indexed_commit_sha as last_commit,
-               r.last_indexed_timestamp as last_indexed
-        ORDER BY r.last_indexed_timestamp DESC
+               null as last_commit,
+               null as last_indexed
+        ORDER BY r.url
         """
         try:
             results = await self.run_query(query)
-            # Convert timestamps to readable format
-            for repo in results:
-                if repo.get('last_indexed'):
-                    # Convert Neo4j timestamp (milliseconds since epoch) to readable date
-                    import datetime
-                    timestamp = repo['last_indexed'] / 1000  # Convert to seconds
-                    repo['last_indexed'] = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
             return results
         except Exception as e:
             logger.error(f"Error retrieving repositories: {e}", exc_info=True)
@@ -504,44 +764,32 @@ class Neo4jManager:
         """
         query = """
         MATCH (r:Repository)
-        WHERE r.is_active IS NOT NULL AND r.is_active = true
+        WHERE r.is_active = true
         RETURN r.url as url, 
                r.service_name as service_name, 
                r.description as description,
-               r.last_indexed_commit_sha as last_commit,
-               r.last_indexed_timestamp as last_indexed
+               null as last_commit,
+               null as last_indexed
         """
         
         try:
             results = await self.run_query(query)
             if results and len(results) > 0:
-                # Convert timestamp to readable format if present
-                if results[0].get('last_indexed'):
-                    import datetime
-                    timestamp = results[0]['last_indexed'] / 1000  # Convert to seconds
-                    results[0]['last_indexed'] = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
                 return results[0]
                 
-            # If no active repository found, try to get the most recently indexed one
+            # If no active repository found, try to get any repository
             fallback_query = """
             MATCH (r:Repository)
             RETURN r.url as url, 
                   r.service_name as service_name, 
                   r.description as description,
-                  r.last_indexed_commit_sha as last_commit,
-                  r.last_indexed_timestamp as last_indexed
-            ORDER BY r.last_indexed_timestamp DESC
+                  null as last_commit,
+                  null as last_indexed
             LIMIT 1
             """
             
             fallback_results = await self.run_query(fallback_query)
             if fallback_results and len(fallback_results) > 0:
-                # Convert timestamp to readable format if present
-                if fallback_results[0].get('last_indexed'):
-                    import datetime
-                    timestamp = fallback_results[0]['last_indexed'] / 1000  # Convert to seconds
-                    fallback_results[0]['last_indexed'] = datetime.datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-                
                 # Set this as active for consistency
                 await self.set_active_repository(fallback_results[0]['url'])
                 return fallback_results[0]
@@ -550,6 +798,152 @@ class Neo4jManager:
         except Exception as e:
             logger.error(f"Error retrieving active repository: {e}", exc_info=True)
             return None
+
+    async def get_connected_repositories(self, repo_url: str) -> List[Dict[str, Any]]:
+        """
+        Finds repositories that are connected to the given repository through relationships.
+        
+        Args:
+            repo_url: URL of the repository to find connections for
+            
+        Returns:
+            List of dictionaries containing connected repository information
+        """
+        query = """
+        // Find repositories connected through API calls
+        MATCH (r1:Repository {url: $repo_url})<-[:BELONGS_TO]-(:ApiEndpoint)<-[:MAY_CALL]-(:Function)-[:BELONGS_TO]->(r2:Repository)
+        WHERE r1 <> r2
+        RETURN DISTINCT r2.url as url, 
+               r2.service_name as service_name, 
+               r2.description as description,
+               null as last_commit,
+               null as last_indexed
+        
+        UNION
+        
+        // Union with repositories connected through shared data models
+        MATCH (r1:Repository {url: $repo_url})<-[:BELONGS_TO]-(:DataModel)-[:SIMILAR_TO]-(:DataModel)-[:BELONGS_TO]->(r2:Repository)
+        WHERE r1 <> r2
+        RETURN DISTINCT r2.url as url, 
+               r2.service_name as service_name, 
+               r2.description as description,
+               null as last_commit,
+               null as last_indexed
+        
+        UNION
+        
+        // Union with repositories connected through API model usage
+        MATCH (r1:Repository {url: $repo_url})<-[:BELONGS_TO]-(:ApiEndpoint)-[:USES_MODEL]->(:DataModel)-[:BELONGS_TO]->(r2:Repository)
+        WHERE r1 <> r2
+        RETURN DISTINCT r2.url as url, 
+               r2.service_name as service_name, 
+               r2.description as description,
+               null as last_commit,
+               null as last_indexed
+        """
+        
+        try:
+            params = {"repo_url": repo_url}
+            results = await self.run_query(query, params)
+            return results
+        except Exception as e:
+            logger.error(f"Error retrieving connected repositories: {e}", exc_info=True)
+            return []
+
+    async def get_repository_connections_summary(self, repo_url: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Gets a summary of all repository connections in the system.
+        If repo_url is provided, only returns connections for that repository.
+        
+        Args:
+            repo_url: Optional URL of the repository to get connections for
+            
+        Returns:
+            List of dictionaries containing connection information
+        """
+        try:
+            if repo_url:
+                # Query for specific repository connections
+                query = """
+                MATCH (r1:Repository {url: $repo_url})-[rel]->(r2:Repository)
+                RETURN r1.url as source_url, 
+                       r1.service_name as source_name,
+                       r2.url as target_url,
+                       r2.service_name as target_name,
+                       type(rel) as connection_type,
+                       1 as strength,
+                       type(rel) as connection_description
+                """
+                params = {"repo_url": repo_url}
+            else:
+                # Query for all repository connections
+                query = """
+                MATCH (r1:Repository)-[rel]->(r2:Repository)
+                RETURN r1.url as source_url, 
+                       r1.service_name as source_name,
+                       r2.url as target_url,
+                       r2.service_name as target_name,
+                       type(rel) as connection_type,
+                       1 as strength,
+                       type(rel) as connection_description
+                """
+                params = {}
+                
+            results = await self.run_query(query, params)
+            return results
+        except Exception as e:
+            logger.error(f"Error retrieving repository connections: {e}", exc_info=True)
+            return []
+            
+    async def get_repository_connection_details(self, source_url: str, target_url: str) -> Dict[str, Any]:
+        """
+        Gets detailed information about the connection between two repositories.
+        
+        Args:
+            source_url: URL of the source repository
+            target_url: URL of the target repository
+            
+        Returns:
+            Dictionary containing detailed connection information
+        """
+        try:
+            # Query for connection details
+            query = """
+            // Get basic connection information
+            MATCH (r1:Repository {url: $source_url})-[rel]->(r2:Repository {url: $target_url})
+            
+            // Get API calls between repositories
+            OPTIONAL MATCH (func:Function)-[:BELONGS_TO]->(r1)
+            OPTIONAL MATCH (api:ApiEndpoint)-[:BELONGS_TO]->(r2)
+            OPTIONAL MATCH (func)-[:MAY_CALL]->(api)
+            WITH r1, r2, rel, collect({function: func.name, api: api.name, path: api.api_path}) as api_calls
+            
+            // Get shared data models
+            OPTIONAL MATCH (dm1:DataModel)-[:BELONGS_TO]->(r1)
+            OPTIONAL MATCH (dm2:DataModel)-[:BELONGS_TO]->(r2)
+            OPTIONAL MATCH (dm1)-[:SIMILAR_TO]->(dm2)
+            WITH r1, r2, rel, api_calls, collect({model1: dm1.name, model2: dm2.name}) as shared_models
+            
+            // Return detailed connection information
+            RETURN r1.service_name as source_name,
+                   r2.service_name as target_name,
+                   type(rel) as connection_type,
+                   1 as strength,
+                   api_calls,
+                   shared_models,
+                   null as first_detected,
+                   null as last_updated
+            """
+            
+            params = {"source_url": source_url, "target_url": target_url}
+            
+            results = await self.run_query(query, params)
+            if results and len(results) > 0:
+                return results[0]
+            return {}
+        except Exception as e:
+            logger.error(f"Error retrieving repository connection details: {e}", exc_info=True)
+            return {}
 
 
 # Instantiate the manager for use in ingestion and the main app

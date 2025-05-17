@@ -22,7 +22,7 @@ class IngestionSettings(Settings):
     
     # Comma-separated list of file extensions to parse (e.g., ".py,.java")
     ingest_target_extensions: str = Field(
-        default=".py", 
+        default=".py,.java,.go,.js,.jsx,.ts,.tsx,.cs,.proto,.md,.yaml,.yml,.json", 
         env="INGEST_TARGET_EXTENSIONS",
         description="File extensions to analyze, comma-separated"
     )
@@ -31,6 +31,9 @@ class IngestionSettings(Settings):
     
     # Will be set dynamically based on the repository URL
     clone_dir: str = ""
+    
+    # Add repo_dir attribute for compatibility with chunking.py
+    repo_dir: str = os.path.join(os.getcwd(), "ingestion")
 
     # Chunking settings
     chunk_size: int = 1000
@@ -64,19 +67,34 @@ class IngestionSettings(Settings):
         
     @staticmethod
     def extract_repo_name(repo_url: str) -> str:
-        """Extract repository name from URL."""
+        """
+        Extract repository name from URL.
+        
+        Args:
+            repo_url: The repository URL
+            
+        Returns:
+            A sanitized repository name suitable for file paths
+        """
         if not repo_url:
             return "unknown_repo"
             
+        # For local URLs with a clear format, return the name directly
+        if repo_url.startswith("local://"):
+            return repo_url.replace("local://", "")
+            
         # Remove trailing slashes and .git extension
-        clean_url = repo_url.rstrip('/').rstrip('.git')
+        clean_url = repo_url.rstrip('/')
+        if clean_url.endswith('.git'):
+            clean_url = clean_url[:-4]  # Remove .git extension
         
         # Get the last part of the URL (the repo name)
         parts = clean_url.split('/')
-        repo_name = parts[-1]
+        repo_name = parts[-1] if parts else "unknown_repo"
         
         # Replace any problematic characters with underscores
-        repo_name = repo_name.replace('.', '_').replace('-', '_')
+        # This ensures consistency in directory naming
+        repo_name = re.sub(r'[^a-zA-Z0-9_]', '_', repo_name)
         
         return repo_name
 

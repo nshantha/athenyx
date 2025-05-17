@@ -1,0 +1,19 @@
+{
+  "fallback_count": 0,
+  "total_count": 2246,
+  "fallback_percentage": 0.0,
+  "connection_counts": {
+    "total": 2246,
+    "file_connected": 2246,
+    "function_connected": 199,
+    "class_connected": 113,
+    "repo_connected": 37
+  },
+  "proto_counts": {
+    "total_proto": 37,
+    "file_connected": 37,
+    "function_connected": 0,
+    "class_connected": 0,
+    "repo_connected": 37
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "before": {
+    "repository_file_count": 184,
+    "file_function_count": 1017,
+    "file_class_count": 79,
+    "function_chunk_count": 0,
+    "class_chunk_count": 0,
+    "file_direct_chunk_count": 2209,
+    "orphaned_chunk_count": 37,
+    "node_counts": {
+      "CodeChunk": 2246,
+      "Function": 1017,
+      "File": 184,
+      "Class": 79,
+      "Repository": 1,
+      "ApiEndpoint": 1
+    },
+    "function_file_connection_percentage": 100.0,
+    "class_file_connection_percentage": 100.0,
+    "function_chunk_connection_percentage": 0.0,
+    "class_chunk_connection_percentage": 0.0,
+    "direct_file_chunk_connection_percentage": 98.35262689225289,
+    "orphaned_chunk_percentage": 1.6473731077471059
+  },
+  "after": {
+    "repository_file_count": 184,
+    "file_function_count": 1017,
+    "file_class_count": 79,
+    "function_chunk_count": 199,
+    "class_chunk_count": 113,
+    "file_direct_chunk_count": 1917,
+    "orphaned_chunk_count": 37,
+    "node_counts": {
+      "CodeChunk": 2246,
+      "Function": 1017,
+      "File": 184,
+      "Class": 79,
+      "Repository": 1,
+      "ApiEndpoint": 1
+    },
+    "function_file_connection_percentage": 100.0,
+    "class_file_connection_percentage": 100.0,
+    "function_chunk_connection_percentage": 8.86019590382903,
+    "class_chunk_connection_percentage": 5.0311665182546745,
+    "direct_file_chunk_connection_percentage": 85.35173642030276,
+    "orphaned_chunk_percentage": 1.6473731077471059
+  }
+}

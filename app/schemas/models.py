@@ -45,7 +45,28 @@ class RepositoryCreate(BaseModel):
     description: Optional[str] = None
     
 class RepositoryResponse(BaseModel):
-    """Model for repository operation responses."""
+    """Response model for repository operations."""
     success: bool
     message: str
     repository: Optional[RepositoryInfo] = None
+
+class RepositoryConnection(BaseModel):
+    """Model for a connection between repositories."""
+    source_url: Optional[str] = None
+    source_name: Optional[str] = None
+    target_url: Optional[str] = None
+    target_name: Optional[str] = None
+    connection_type: Optional[str] = None
+    strength: Optional[float] = None
+    connection_description: Optional[str] = None
+
+class RepositoryConnectionList(BaseModel):
+    """Model for a list of repository connections."""
+    repository_url: Optional[str] = None
+    connections: List[Dict[str, Any]] = []
+
+class RepositoryConnectionDetail(BaseModel):
+    """Model for detailed information about a connection between repositories."""
+    source_url: str
+    target_url: str
+    details: Dict[str, Any] = {}

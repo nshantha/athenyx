@@ -32,6 +32,35 @@ async def generate_embeddings_batch(texts: List[str]) -> List[List[float]]:
         # The retry decorator will handle retries
         raise # Re-raise exception to trigger retry
 
+@retry(wait=wait_random_exponential(min=1, max=20), stop=stop_after_attempt(3))
+async def generate_embedding(text: str) -> List[float]:
+    """
+    Generates an embedding for a single text using OpenAI API.
+    
+    Args:
+        text (str): The text to generate an embedding for
+        
+    Returns:
+        List[float]: The embedding vector
+    """
+    if not text:
+        # Return a zero vector of the expected dimension if text is empty
+        return [0.0] * settings.embedding_dimensions
+        
+    try:
+        logger.debug("Generating embedding for single text...")
+        response = await aclient.embeddings.create(
+            input=[text],
+            model=settings.openai_embedding_model
+        )
+        embedding = response.data[0].embedding
+        logger.debug(f"Successfully generated embedding of dimension {len(embedding)}")
+        return embedding
+    except Exception as e:
+        logger.error(f"OpenAI API error during single embedding generation: {e}", exc_info=True)
+        # The retry decorator will handle retries
+        raise
+
 async def embed_chunks(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Adds vector embeddings to each chunk dictionary using batch processing.
@@ -46,7 +75,7 @@ async def embed_chunks(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
     for i in range(0, len(chunks), batch_size):
         batch_chunks = chunks[i:i + batch_size]
-        batch_texts = [chunk['text'] for chunk in batch_chunks]
+        batch_texts = [chunk['content'] for chunk in batch_chunks]
         if batch_texts:
             text_batches.append(batch_texts)
             tasks.append(generate_embeddings_batch(batch_texts))

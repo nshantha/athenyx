@@ -74,7 +74,11 @@ class Neo4jCodeRetriever(BaseRetriever):
              logger.error(f"Failed to embed query '{query}': {e}", exc_info=True)
              return []
 
-        # 2. Perform vector search
+        # 2. Get the active repository for prioritization
+        active_repo = await db_manager.get_active_repository()
+        active_repo_url = active_repo.get('url') if active_repo else None
+        
+        # 3. Perform vector search
         try:
             # Try to use a specific Neo4j query for high-level project info if available
             if is_high_level and "microservices" in query_lower or "services" in query_lower:
@@ -103,17 +107,62 @@ class Neo4jCodeRetriever(BaseRetriever):
                     logger.error(f"Error in specialized high-level query: {e}", exc_info=True)
                     # Continue with regular vector search
             
-            # Standard vector search
-            search_results: List[Dict[str, Any]] = await db_manager.vector_search_code_chunks(
-                query_embedding=query_embedding,
-                k=search_k,  # Use the adjusted k value
-            )
-            logger.debug(f"Neo4j vector search returned {len(search_results)} results.")
+            # Standard vector search with repository prioritization
+            if active_repo_url:
+                # First search in the active repository
+                primary_results = await db_manager.vector_search_code_chunks(
+                    query_embedding=query_embedding,
+                    k=search_k,
+                    repository_url=active_repo_url  # Limit to active repository
+                )
+                logger.debug(f"Primary repository search returned {len(primary_results)} results.")
+                
+                # If primary search has insufficient results, check connected repositories
+                if len(primary_results) < 3:
+                    logger.info(f"Primary repository search returned limited results, checking connected repositories")
+                    
+                    # Get connected repositories
+                    connected_repos = await db_manager.get_connected_repositories(active_repo_url)
+                    connected_repo_urls = [repo.get('url') for repo in connected_repos]
+                    
+                    if connected_repo_urls:
+                        # Search in connected repositories
+                        secondary_results = []
+                        for repo_url in connected_repo_urls:
+                            repo_results = await db_manager.vector_search_code_chunks(
+                                query_embedding=query_embedding,
+                                k=5,  # Fewer results from secondary repositories
+                                repository_url=repo_url
+                            )
+                            # Tag results with repository info
+                            for result in repo_results:
+                                result['secondary_repo'] = True
+                                result['repo_url'] = repo_url
+                                result['repo_name'] = repo_url.split('/')[-1].replace('.git', '')
+                            
+                            secondary_results.extend(repo_results)
+                        
+                        logger.debug(f"Secondary repositories search returned {len(secondary_results)} results.")
+                        
+                        # Combine results, prioritizing primary repository
+                        search_results = primary_results + secondary_results
+                    else:
+                        search_results = primary_results
+                else:
+                    search_results = primary_results
+            else:
+                # If no active repository, search across all repositories
+                search_results = await db_manager.vector_search_code_chunks(
+                    query_embedding=query_embedding,
+                    k=search_k
+                )
+                
+            logger.debug(f"Total vector search returned {len(search_results)} results.")
         except Exception as e:
             logger.error(f"Failed to retrieve from Neo4j vector index: {e}", exc_info=True)
             return []
 
-        # 3. Process results
+        # 4. Process results
         documents = []
         for result in search_results:
             text = result.get("text", "")
@@ -123,21 +172,28 @@ class Neo4jCodeRetriever(BaseRetriever):
             score_boost = 1.0
             if is_high_level and ("README" in path or "readme" in path):
                 score_boost = 1.5
+            
+            # Lower score for secondary repository results
+            if result.get('secondary_repo'):
+                score_boost *= 0.8
                 
             metadata = {
                 "source": path,
                 "score": result.get("score", 0) * score_boost,
                 "start_line": result.get("start_line"),
-                "is_high_level": is_high_level
+                "is_high_level": is_high_level,
+                "secondary_repo": result.get('secondary_repo', False),
+                "repo_url": result.get('repo_url'),
+                "repo_name": result.get('repo_name')
             }
             metadata = {k: v for k, v in metadata.items() if v is not None}
             doc = Document(page_content=text, metadata=metadata)
             documents.append(doc)
 
-        # 4. Sort by boosted score for consistency
+        # 5. Sort by boosted score for consistency
         documents.sort(key=lambda x: x.metadata.get("score", 0), reverse=True)
         
-        # 5. Add special handling for inconsistent information
+        # 6. Add special handling for inconsistent information
         if is_high_level and len(documents) > 0:
             # Add a note about potential inconsistency for the agent to be aware
             consistency_note = """
@@ -149,6 +205,7 @@ class Neo4jCodeRetriever(BaseRetriever):
             3. The most recently updated files
             
             Synthesize information carefully and acknowledge any significant inconsistencies.
+            When using information from secondary repositories, clearly indicate which repository it comes from.
             """
             
             # Add as a special document at the beginning
@@ -181,33 +238,118 @@ def get_tools() -> List[Tool]:
 
     # 2. Project Overview Tool - Returns information about project structure
     try:
-        # Updated wrapper to use graph-based queries
-        async def get_project_overview(query: str) -> str:
-            """Get high-level information about the project structure and services directly from the knowledge graph."""
-            # Extract the topic based on the query
-            topic = "overview"
-            if "microservice" in query.lower() or "service" in query.lower():
-                topic = "microservices"
-            elif "architecture" in query.lower() or "structure" in query.lower():
-                topic = "architecture"
+        # Updated wrapper to use graph-based queries with repository context
+        async def get_project_overview(query: str = "", query_type: str = "overview", repository_url: str = None) -> str:
+            """Get high-level information about the project structure and services directly from the knowledge graph.
+            
+            Args:
+                query: The original query text for context
+                query_type: Type of information to retrieve (overview, microservices, architecture, project_structure)
+                repository_url: Optional URL of specific repository to query (defaults to active repo)
+            """
+            # Extract the topic based on the query or use the explicit query_type
+            topic = query_type if query_type != "overview" else "overview"
+            
+            # Get active repository if none specified
+            if not repository_url:
+                active_repo = await db_manager.get_active_repository()
+                if active_repo:
+                    repository_url = active_repo.get('url')
+                    logger.info(f"Using active repository for ProjectInfo: {repository_url}")
+            
+            # Override topic based on query content if query_type wasn't explicitly specified
+            if query and query_type == "overview":
+                if "microservice" in query.lower() or "service" in query.lower():
+                    topic = "microservices"
+                elif "architecture" in query.lower():
+                    topic = "architecture"
+                elif "structure" in query.lower() or "organization" in query.lower() or "layout" in query.lower():
+                    topic = "project_structure"
                 
             try:
-                # Use specialized graph query
-                results = await db_manager.query_high_level_info(topic)
+                # Use specialized graph query with repository context
+                results = await db_manager.query_high_level_info(topic, False, repository_url)
+                
                 if results and len(results) > 0:
-                    # Concatenate the results
-                    combined_text = "\n\n".join([r.get("text", "") for r in results])
-                    return f"Project information gathered from the knowledge graph:\n\n{combined_text}"
+                    # Format results based on topic
+                    if topic == "project_structure":
+                        # Organize by file path for project structure
+                        paths_dict = {}
+                        for r in results:
+                            path = r.get("path", "unknown")
+                            if path not in paths_dict:
+                                paths_dict[path] = []
+                            paths_dict[path].append(r.get("text", ""))
+                        
+                        repo_name = "Unknown"
+                        if repository_url:
+                            repo_name = repository_url.split('/')[-1].replace('.git', '')
+                            
+                        formatted = [f"## Project Structure Information for {repo_name}\n"]
+                        
+                        # Directory structure first (if present)
+                        if 'directory_structure' in paths_dict:
+                            formatted.append("### Directory Structure\n")
+                            formatted.append("\n".join(paths_dict['directory_structure']))
+                            formatted.append("\n")
+                            # Remove to prevent duplication
+                            del paths_dict['directory_structure']
+                        
+                        # Then README files
+                        readme_paths = [p for p in paths_dict.keys() if 'README' in p]
+                        if readme_paths:
+                            formatted.append("### From README Files\n")
+                            for path in readme_paths:
+                                formatted.append(f"**File: {path}**\n")
+                                formatted.append("\n".join(paths_dict[path]))
+                                formatted.append("\n")
+                                # Remove to prevent duplication
+                                del paths_dict[path]
+                        
+                        # Then docs and other documentation
+                        doc_paths = [p for p in paths_dict.keys() if '/docs/' in p or p.endswith('.md')]
+                        if doc_paths:
+                            formatted.append("### From Documentation\n")
+                            for path in doc_paths:
+                                formatted.append(f"**File: {path}**\n")
+                                formatted.append("\n".join(paths_dict[path]))
+                                formatted.append("\n")
+                                # Remove to prevent duplication
+                                del paths_dict[path]
+                        
+                        # Then everything else
+                        if paths_dict:
+                            formatted.append("### Additional Structure Information\n")
+                            for path, texts in paths_dict.items():
+                                formatted.append(f"**Source: {path}**\n")
+                                formatted.append("\n".join(texts))
+                                formatted.append("\n")
+                            
+                        return "\n".join(formatted)
+                    else:
+                        # Standard formatting for other topics
+                        repo_name = "Unknown"
+                        if repository_url:
+                            repo_name = repository_url.split('/')[-1].replace('.git', '')
+                            
+                        combined_text = "\n\n".join([r.get("text", "") for r in results])
+                        return f"Project information for {repo_name} gathered from the knowledge graph:\n\n{combined_text}"
                 else:
-                    return "No specific project information found for this query. Try using the CodeBaseRetriever tool instead."
+                    # Provide a helpful message based on the topic
+                    if topic == "project_structure":
+                        return f"No project structure information found in the database for repository: {repository_url}. Try using the DirectoryExplorer tool, or the CodeBaseRetriever tool to search for README.md files."
+                    elif topic == "microservices":
+                        return f"No microservices information found for repository: {repository_url}. Try using the KnowledgeGraph tool with query_type='services'."
+                    else:
+                        return f"No specific project information found for repository: {repository_url}. Try using the CodeBaseRetriever tool to search for relevant documentation."
             except Exception as e:
                 logger.error(f"Error in ProjectInfo tool: {e}", exc_info=True)
-                return "Error retrieving project information. Please try the CodeBaseRetriever tool instead."
+                return f"Error retrieving project information: {str(e)}. Please try the DirectoryExplorer or CodeBaseRetriever tool instead."
         
         project_info_tool = Tool(
             name="ProjectInfo",
             func=get_project_overview,
-            description="Provides high-level information about the project structure, architecture, and services directly from the knowledge graph. Use this tool for questions about how many services exist, what the project architecture is, or to get an overview of the project.",
+            description="Provides high-level information about the project structure, architecture, and services directly from the knowledge graph. Parameters: query (optional text query), query_type (optional - overview, microservices, architecture, project_structure)",
             coroutine=get_project_overview  # Mark as async
         )
         tools.append(project_info_tool)
@@ -461,6 +603,104 @@ def get_tools() -> List[Tool]:
     else:
         logger.warning("TAVILY_API_KEY not found in environment config. WebSearch tool will not be available.")
 
+    # Add a directory explorer tool for project structure
+    try:
+        async def explore_directories(repository_url: Optional[str] = None) -> str:
+            """
+            Provides a visual representation of the repository directory structure.
+            
+            Args:
+                repository_url: Optional URL of the repository to analyze
+            """
+            try:
+                # First get the active repository if none specified
+                if not repository_url:
+                    active_repo = await db_manager.get_active_repository()
+                    if active_repo:
+                        repository_url = active_repo.get('url')
+                    
+                if not repository_url:
+                    return "No repository specified, and no active repository found."
+                    
+                # Get directory structure from the database
+                query = """
+                MATCH (r:Repository {url: $repo_url})<-[:BELONGS_TO]-(f:File)
+                WITH f.path AS path
+                RETURN path
+                ORDER BY path
+                """
+                
+                results = await db_manager.run_query(query, {"repo_url": repository_url})
+                
+                if not results or len(results) == 0:
+                    return f"No files found for repository {repository_url}"
+                    
+                # Build directory tree structure
+                dir_tree = {}
+                for result in results:
+                    path = result.get('path', '')
+                    parts = path.split('/')
+                    
+                    # Skip empty paths
+                    if not path or not parts:
+                        continue
+                        
+                    # Build tree
+                    current = dir_tree
+                    for i, part in enumerate(parts):
+                        if i == len(parts) - 1:  # File
+                            if 'files' not in current:
+                                current['files'] = []
+                            current['files'].append(part)
+                        else:  # Directory
+                            if 'dirs' not in current:
+                                current['dirs'] = {}
+                            if part not in current['dirs']:
+                                current['dirs'][part] = {}
+                            current = current['dirs'][part]
+                
+                # Format output as markdown tree
+                lines = [f"# Directory Structure for Repository: {repository_url.split('/')[-1]}\n"]
+                
+                def format_tree(node, prefix="", is_last=True, indent=""):
+                    # Add directories
+                    if 'dirs' in node:
+                        dirs = list(node['dirs'].items())
+                        for i, (name, subdir) in enumerate(dirs):
+                            is_dir_last = i == len(dirs) - 1 and ('files' not in node or not node['files'])
+                            lines.append(f"{indent}{prefix}📂 {name}/")
+                            format_tree(
+                                subdir,
+                                prefix="└── " if is_dir_last else "├── ",
+                                is_last=is_dir_last,
+                                indent=indent + ("    " if is_last else "│   ")
+                            )
+                    
+                    # Add files
+                    if 'files' in node:
+                        files = node['files']
+                        for i, file in enumerate(files):
+                            is_file_last = i == len(files) - 1
+                            lines.append(f"{indent}{prefix}📄 {file}")
+                
+                format_tree(dir_tree)
+                return "\n".join(lines)
+                
+            except Exception as e:
+                logger.error(f"Error exploring directories: {e}", exc_info=True)
+                return f"Error exploring directory structure: {str(e)}"
+
+        directory_explorer_tool = Tool(
+            name="DirectoryExplorer",
+            func=explore_directories,
+            description="Generates a visual representation of the repository directory structure. Use this when you need to understand the folder organization of a project.",
+            coroutine=explore_directories
+        )
+        tools.append(directory_explorer_tool)
+        logger.info("DirectoryExplorer tool initialized.")
+    except Exception as e:
+        logger.error(f"Failed to initialize DirectoryExplorer tool: {e}", exc_info=True)
+    
     return tools
 
 # Instantiate tools once

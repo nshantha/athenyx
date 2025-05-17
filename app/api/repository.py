@@ -6,9 +6,9 @@ import os
 import asyncio
 import urllib.parse
 
-from app.schemas.models import RepositoryInfo, RepositoryList, RepositoryCreate, RepositoryResponse
+from app.schemas.models import RepositoryInfo, RepositoryList, RepositoryCreate, RepositoryResponse, RepositoryConnectionList, RepositoryConnectionDetail
 from app.db.neo4j_manager import db_manager
-from ingestion.main import run_comprehensive_ingestion
+from ingestion.main import run_enhanced_ingestion
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -170,7 +170,7 @@ def _run_ingestion():
             logger.error("No repository URL found in environment variables")
             return
             
-        logger.info(f"Starting ingestion for repository: {repo_url}")
+        logger.info(f"Starting enhanced ingestion for repository: {repo_url}")
         
         # Run the ingestion directly with the main module, passing the repository URL as a command line argument
         cmd = [
@@ -179,7 +179,7 @@ def _run_ingestion():
             "--repos", repo_url      # Explicitly pass the repo URL as a command line argument
         ]
         
-        logger.info(f"Starting ingestion process: {' '.join(cmd)}")
+        logger.info(f"Starting enhanced ingestion process: {' '.join(cmd)}")
         
         # Create a function to read and log output from the process
         def log_output(pipe, prefix):
@@ -209,7 +209,97 @@ def _run_ingestion():
         stdout_thread.start()
         stderr_thread.start()
         
-        logger.info("Ingestion process started with proper logging")
+        logger.info("Enhanced ingestion process started with proper logging")
         
     except Exception as e:
-        logger.error(f"Error during repository ingestion: {e}", exc_info=True) 
+        logger.error(f"Error during repository ingestion: {e}", exc_info=True)
+
+@router.get("/repositories/{repo_url}/connections", response_model=RepositoryConnectionList)
+async def get_repository_connections(repo_url: str):
+    """
+    Get connections between the specified repository and other repositories.
+    """
+    try:
+        # URL decode the repository URL
+        repo_url = urllib.parse.unquote(repo_url)
+        
+        # Connect to the database
+        await db_manager.connect()
+        
+        # Get repository connections
+        connections = await db_manager.get_repository_connections_summary(repo_url)
+        
+        # Return the connections
+        return RepositoryConnectionList(
+            repository_url=repo_url,
+            connections=connections
+        )
+        
+    except Exception as e:
+        logger.error(f"Error retrieving repository connections: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve repository connections: {str(e)}"
+        )
+
+@router.get("/repositories/{source_url}/connections/{target_url}", response_model=RepositoryConnectionDetail)
+async def get_repository_connection_details(source_url: str, target_url: str):
+    """
+    Get detailed information about the connection between two repositories.
+    """
+    try:
+        # URL decode the repository URLs
+        source_url = urllib.parse.unquote(source_url)
+        target_url = urllib.parse.unquote(target_url)
+        
+        # Connect to the database
+        await db_manager.connect()
+        
+        # Get connection details
+        details = await db_manager.get_repository_connection_details(source_url, target_url)
+        
+        if not details:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No connection found between {source_url} and {target_url}"
+            )
+        
+        # Return the details
+        return RepositoryConnectionDetail(
+            source_url=source_url,
+            target_url=target_url,
+            details=details
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving repository connection details: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve repository connection details: {str(e)}"
+        )
+
+@router.get("/connections", response_model=RepositoryConnectionList)
+async def get_all_repository_connections():
+    """
+    Get all connections between repositories in the system.
+    """
+    try:
+        # Connect to the database
+        await db_manager.connect()
+        
+        # Get all repository connections
+        connections = await db_manager.get_repository_connections_summary()
+        
+        # Return the connections
+        return RepositoryConnectionList(
+            connections=connections
+        )
+        
+    except Exception as e:
+        logger.error(f"Error retrieving all repository connections: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve repository connections: {str(e)}"
+        ) 

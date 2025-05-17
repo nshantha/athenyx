@@ -5,6 +5,9 @@ from tree_sitter import Language, Parser, Node
 from tree_sitter_languages import get_language, get_parser # Helper library
 from typing import List, Dict, Any, Tuple, Optional
 
+from ingestion.parsing.queries import get_queries_for_language
+from ingestion.parsing.simple_parser import SimpleParser
+
 logger = logging.getLogger(__name__)
 
 # Pre-load parsers to avoid reloading on each call
@@ -131,111 +134,228 @@ class TreeSitterParser:
 
     @staticmethod
     def parse_python(file_path: str, content: str) -> Dict[str, Any]:
-        # Basic queries for Python functions and classes
-        queries = {
-            "functions": "(function_definition name: (identifier) @name) @function",
-            "classes": "(class_definition name: (identifier) @name) @class"
-        }
+        """Parse Python files extracting functions, classes, and other structures."""
+        python_queries = get_queries_for_language('python')
+        if not python_queries:
+            logger.warning("Python query patterns not available, using basic patterns")
+            # Fallback to basic patterns
+            queries = {
+                "functions": "(function_definition name: (identifier) @name) @function",
+                "classes": "(class_definition name: (identifier) @name) @class"
+            }
+        else:
+            queries = {
+                "functions": python_queries["functions"],
+                "classes": python_queries["classes"]
+            }
         return TreeSitterParser._generic_parse('python', file_path, content, queries)
 
     @staticmethod
     def parse_go(file_path: str, content: str) -> Dict[str, Any]:
-         # Basic queries for Go functions, methods, types (structs)
-         # Note: Go methods are functions with receivers, harder to distinguish simply
-         queries = {
-             "functions": """
-                 [
-                     (function_declaration name: (identifier) @name) @function
-                     (method_declaration name: (field_identifier) @name) @function
-                 ]
-             """,
-             "structs": "(type_declaration (type_spec name: (type_identifier) @name (struct_type) ) ) @struct"
-             # Interfaces could be added: (type_declaration (type_spec name: (type_identifier) @name (interface_type)))
-         }
-         # Store structs under 'classes' key for simplicity or adjust loader
-         result = TreeSitterParser._generic_parse('go', file_path, content, queries)
-         result["classes"] = result.pop("structs", []) # Rename 'structs' to 'classes'
-         return result
+        """Parse Go files extracting functions, structs, interfaces, and other structures."""
+        go_queries = get_queries_for_language('go')
+        if not go_queries:
+            logger.warning("Go query patterns not available, using basic patterns")
+            # Fallback to simple patterns
+            queries = {
+                "functions": """
+                    [
+                        (function_declaration name: (identifier) @name) @function
+                        (method_declaration name: (field_identifier) @name) @function
+                    ]
+                """,
+                "structs": "(type_declaration (type_spec name: (type_identifier) @name (struct_type) ) ) @struct"
+            }
+        else:
+            queries = {
+                "functions": go_queries["functions"],
+                "structs": go_queries["structs"],
+                "interfaces": go_queries["interfaces"]
+            }
+        
+        # Store structs under 'classes' key for consistency with other languages
+        result = TreeSitterParser._generic_parse('go', file_path, content, queries)
+        if "structs" in result:
+            result["classes"] = result.pop("structs", [])
+        return result
 
     @staticmethod
     def parse_csharp(file_path: str, content: str) -> Dict[str, Any]:
-         # Basic queries for C# methods, classes, interfaces, structs
-         queries = {
-             "functions": "(method_declaration name: (identifier) @name) @function",
-             "classes": "(class_declaration name: (identifier) @name) @class",
-             "interfaces": "(interface_declaration name: (identifier) @name) @interface",
-             "structs": "(struct_declaration name: (identifier) @name) @struct"
-         }
-         # Combine structs and interfaces into 'classes' for simplicity or adjust loader
-         result = TreeSitterParser._generic_parse('csharp', file_path, content, queries)
-         result["classes"].extend(result.pop("interfaces", []))
-         result["classes"].extend(result.pop("structs", []))
-         return result
+        """Parse C# files extracting functions, classes, interfaces, and other structures."""
+        csharp_queries = get_queries_for_language('csharp')
+        if not csharp_queries:
+            logger.warning("C# query patterns not available, using basic patterns")
+            # Fallback to basic patterns
+            queries = {
+                "functions": "(method_declaration name: (identifier) @name) @function",
+                "classes": "(class_declaration name: (identifier) @name) @class",
+                "interfaces": "(interface_declaration name: (identifier) @name) @interface",
+                "structs": "(struct_declaration name: (identifier) @name) @struct"
+            }
+        else:
+            queries = {
+                "functions": csharp_queries["functions"],
+                "classes": csharp_queries["classes"],
+                "interfaces": csharp_queries["interfaces"]
+            }
+        
+        # Combine structs and interfaces into 'classes' for simplicity
+        result = TreeSitterParser._generic_parse('csharp', file_path, content, queries)
+        if "interfaces" in result:
+            result["classes"].extend(result.pop("interfaces", []))
+        if "structs" in result:
+            result["classes"].extend(result.pop("structs", []))
+        return result
 
     @staticmethod
     def parse_java(file_path: str, content: str) -> Dict[str, Any]:
-         # Basic queries for Java methods, classes, interfaces
-         queries = {
-             "functions": "(method_declaration name: (identifier) @name) @function",
-             "classes": "(class_declaration name: (identifier) @name) @class",
-             "interfaces": "(interface_declaration name: (identifier) @name) @interface"
-         }
-          # Combine interfaces into 'classes' for simplicity or adjust loader
-         result = TreeSitterParser._generic_parse('java', file_path, content, queries)
-         result["classes"].extend(result.pop("interfaces", []))
-         return result
+        """Parse Java files extracting methods, classes, interfaces, and other structures."""
+        java_queries = get_queries_for_language('java')
+        if not java_queries:
+            logger.warning("Java query patterns not available, using basic patterns")
+            # Fallback to basic queries with enhancements
+            queries = {
+                "functions": """
+                    [
+                        ;; Standard method declarations
+                        (method_declaration name: (identifier) @name) @function
+                        
+                        ;; Constructor methods
+                        (constructor_declaration name: (identifier) @name) @function
+                        
+                        ;; Lambda expressions with variable names
+                        (variable_declarator 
+                            name: (identifier) @name 
+                            value: (lambda_expression)) @function
+                        
+                        ;; Anonymous class methods
+                        (class_body 
+                            (method_declaration name: (identifier) @name) @function)
+                        
+                        ;; Methods with annotations (common in Spring)
+                        ((method_declaration
+                            (modifiers (annotation)) name: (identifier) @name)) @function
+                        
+                        ;; Interface methods
+                        (interface_body
+                            (method_declaration name: (identifier) @name)) @function
+                        
+                        ;; Anonymous methods in method chaining
+                        (method_invocation
+                            arguments: (argument_list 
+                                (lambda_expression) @function))
+                    ]
+                """,
+                "classes": """
+                    [
+                        ;; Standard class declarations
+                        (class_declaration name: (identifier) @name) @class
+                        
+                        ;; Inner classes
+                        (class_body 
+                            (class_declaration name: (identifier) @name)) @class
+                    ]
+                """,
+                "interfaces": "(interface_declaration name: (identifier) @name) @interface"
+            }
+        else:
+            queries = {
+                "functions": java_queries["functions"],
+                "classes": java_queries["classes"],
+                "interfaces": java_queries["interfaces"],
+                "enums": java_queries.get("enums", "")
+            }
+        
+        # Combine interfaces and enums into 'classes' for simplicity
+        result = TreeSitterParser._generic_parse('java', file_path, content, queries)
+        if "interfaces" in result:
+            result["classes"].extend(result.pop("interfaces", []))
+        if "enums" in result:
+            result["classes"].extend(result.pop("enums", []))
+        return result
 
     @staticmethod
     def parse_javascript(file_path: str, content: str) -> Dict[str, Any]:
-         # Basic queries for JS functions (incl. arrows) and classes
-         queries = {
-             "functions": """
-                 [
-                     (function_declaration name: (identifier) @name) @function
-                     (method_definition name: (property_identifier) @name) @function
-                     (variable_declarator
-                         name: (identifier) @name
-                         value: [(arrow_function) (function)]) @function
-                      (pair
-                         key: (property_identifier) @name
-                         value: [(arrow_function) (function)]) @function
-
-
-                 ]
-             """,
-              "classes": "(class_declaration name: (identifier) @name) @class"
-         }
-         return TreeSitterParser._generic_parse('javascript', file_path, content, queries)
+        """Parse JavaScript files extracting functions, classes, and other structures."""
+        js_queries = get_queries_for_language('javascript')
+        if not js_queries:
+            logger.warning("JavaScript query patterns not available, using basic patterns")
+            # Fallback to basic patterns with enhancements
+            queries = {
+                "functions": """
+                    [
+                        ;; Standard function declarations
+                        (function_declaration name: (identifier) @name) @function
+                        
+                        ;; Method definitions
+                        (method_definition name: (property_identifier) @name) @function
+                        
+                        ;; Arrow functions in variable declarations
+                        (variable_declarator
+                            name: (identifier) @name
+                            value: [(arrow_function) (function)]) @function
+                        
+                        ;; Object methods
+                        (pair
+                            key: (property_identifier) @name
+                            value: [(arrow_function) (function)]) @function
+                    ]
+                """,
+                "classes": "(class_declaration name: (identifier) @name) @class"
+            }
+        else:
+            queries = {
+                "functions": js_queries["functions"],
+                "classes": js_queries["classes"],
+                "interfaces": js_queries.get("interfaces", "")
+            }
+        
+        # Process the parse results
+        result = TreeSitterParser._generic_parse('javascript', file_path, content, queries)
+        if "interfaces" in result:
+            result["classes"].extend(result.pop("interfaces", []))
+        return result
 
 
     # --- Main Dispatch Method ---
 
     @staticmethod
     def parse_file(file_path: str, content: str, language: str) -> Optional[Dict[str, Any]]:
-        """Parses a file and extracts both structure and relationships."""
-        parse_method = getattr(TreeSitterParser, f"parse_{language}", None)
-        if not parse_method:
-            logger.warning(f"No parser implemented for language: {language}")
-            return None
-
-        # Get basic structure
-        structure = parse_method(file_path, content)
-        if structure.get("parse_error", False):
-            return structure
-
-        # Extract relationships
-        relationships = TreeSitterParser._extract_relationships(file_path, content, language)
-        structure["relationships"] = relationships
-
-        # Extract service information
-        service_info = TreeSitterParser._extract_service_info(PARSERS[language].parse(bytes(content, "utf8")).root_node, bytes(content, "utf8"))
-        structure["service_info"] = service_info
-
-        # Extract API information
-        api_info = TreeSitterParser._extract_api_info(PARSERS[language].parse(bytes(content, "utf8")).root_node, bytes(content, "utf8"))
-        structure["api_info"] = api_info
-
-        return structure
+        """Parse a file using the appropriate parser based on language."""
+        try:
+            # Handle special file formats with SimpleParser
+            if language in ['markdown', 'protobuf', 'yaml', 'yml', 'json']:
+                logger.info(f"Using SimpleParser for {language} file: {file_path}")
+                simple_parser = SimpleParser(language)
+                return simple_parser.parse(file_path, content)
+                
+            # Use language-specific parsers for code files
+            if language == 'python':
+                return TreeSitterParser.parse_python(file_path, content)
+            elif language == 'go':
+                return TreeSitterParser.parse_go(file_path, content)
+            elif language == 'csharp':
+                return TreeSitterParser.parse_csharp(file_path, content)
+            elif language == 'java':
+                return TreeSitterParser.parse_java(file_path, content)
+            elif language == 'javascript' or language == 'typescript':
+                return TreeSitterParser.parse_javascript(file_path, content)
+            else:
+                logger.warning(f"No parser implemented for language: {language}")
+                return {
+                    "path": file_path,
+                    "functions": [],
+                    "classes": [],
+                    "parse_error": True
+                }
+        except Exception as e:
+            logger.error(f"Error parsing file {file_path}: {e}", exc_info=True)
+            return {
+                "path": file_path,
+                "functions": [],
+                "classes": [],
+                "parse_error": True
+            }
 
     @staticmethod
     def _extract_service_info(node: Node, content_bytes: bytes) -> Dict[str, Any]:

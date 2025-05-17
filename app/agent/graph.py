@@ -47,11 +47,17 @@ async def call_model(state: AgentState):
     if len(state["messages"]) == 3:  # Only the system message, optional history, and user query
         query = state["query"].lower()
         
-        # Check if this is a query about project structure or services
+        # Check if this is a project structure query specifically
         is_project_structure_query = any(term in query for term in [
+            "project structure", "folder structure", "directory structure", 
+            "file organization", "code organization", "layout", "file structure"
+        ])
+        
+        # Check if this is a query about project structure or services
+        is_general_structure_query = any(term in query for term in [
             "overview", "about", "what is", "purpose", "high-level", "features", 
             "how many", "architecture", "summary", "microservices", "services"
-        ])
+        ]) or is_project_structure_query
         
         # Check for graph structure questions
         is_graph_structure_query = any(term in query for term in [
@@ -59,7 +65,20 @@ async def call_model(state: AgentState):
             "organization", "architecture", "graph", "dependency"
         ])
         
-        if is_graph_structure_query:
+        if is_project_structure_query:
+            # Enhanced handling for project structure questions
+            hint_message = SystemMessage(content=(
+                "IMPORTANT: This appears to be a question about PROJECT STRUCTURE. "
+                "You should use the following comprehensive approach:\n"
+                "1. First, use the DirectoryExplorer tool to get a visual representation of the directory structure\n"
+                "2. Then, use the ProjectInfo tool with query_type='project_structure' to get specific structure information\n"
+                "3. Next, use the KnowledgeGraph tool with query_type='structure' to analyze relationships\n"
+                "4. Finally, use the CodeBaseRetriever to search for README.md files and documentation\n\n"
+                "Combine all these sources to provide a comprehensive view of the project structure."
+            ))
+            state["messages"].append(hint_message)
+            logger.info("Added enhanced project structure query workflow hint")
+        elif is_graph_structure_query:
             # Recommend the KnowledgeGraph tool for graph relationship queries
             hint_message = SystemMessage(content=(
                 "IMPORTANT: This appears to be a question about code relationships or project structure. "
@@ -69,7 +88,7 @@ async def call_model(state: AgentState):
             ))
             state["messages"].append(hint_message)
             logger.info("Added KnowledgeGraph tool hint for structural query")
-        elif is_project_structure_query:
+        elif is_general_structure_query:
             # For specific counts or service questions, suggest ProjectInfo tool
             if any(term in query for term in ["how many", "microservice", "service"]):
                 hint_message = SystemMessage(content=(

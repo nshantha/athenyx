@@ -66,8 +66,9 @@ async def run_agent(query: str, conversation_history: str = None, repository_con
         logger.info(f"Including repository context: {repository_context}")
         system_message += (
             f"{repository_context}\n\n"
-            "When answering questions, focus on this specific repository unless the user explicitly asks about other repositories. "
-            "If the user asks about a feature or component not in this repository, clarify that it's not present in the current repository context.\n\n"
+            "When answering questions, follow the repository prioritization rules carefully. "
+            "First search in the primary repository, and only if necessary, search in connected repositories. "
+            "Always be explicit about which repository your information comes from.\n\n"
         )
         
     system_message += (
