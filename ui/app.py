@@ -16,11 +16,11 @@ import subprocess # Import for Git command execution
 # Handle permission errors that might occur when accessing the current working directory
 try:
 # Configure logging for the UI app
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
 
-# Load environment variables from .env file, especially for the API URL
-load_dotenv()
+    # Load environment variables from .env file, especially for the API URL
+    load_dotenv()
 except PermissionError as e:
     # If we can't access the current directory, change to a directory we likely have access to
     os.chdir(os.path.expanduser("~"))  # Change to user's home directory

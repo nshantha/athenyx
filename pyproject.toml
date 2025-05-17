@@ -39,6 +39,7 @@ tabulate = "^0.9.0"
 pytest = "^8.2.0"
 pytest-asyncio = "^0.23.6"
 httpx = "^0.27.0" # For testing FastAPI async client
+vulture = "^2.14"
 
 [build-system]
 requires = ["poetry-core"]
