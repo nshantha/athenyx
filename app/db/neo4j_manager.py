@@ -697,8 +697,8 @@ class Neo4jManager:
         RETURN r.url as url, 
                r.service_name as service_name, 
                r.description as description,
-               null as last_commit,
-               null as last_indexed
+               r.last_commit as last_commit,
+               r.last_indexed_commit_sha as last_indexed
         ORDER BY r.url
         """
         try:
@@ -770,8 +770,8 @@ class Neo4jManager:
         RETURN r.url as url, 
                r.service_name as service_name, 
                r.description as description,
-               null as last_commit,
-               null as last_indexed
+               r.last_commit as last_commit,
+               r.last_indexed_commit_sha as last_indexed
         """
         
         try:
@@ -785,8 +785,8 @@ class Neo4jManager:
             RETURN r.url as url, 
                   r.service_name as service_name, 
                   r.description as description,
-                  null as last_commit,
-                  null as last_indexed
+                  r.last_commit as last_commit,
+                  r.last_indexed_commit_sha as last_indexed
             LIMIT 1
             """
             
