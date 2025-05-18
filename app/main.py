@@ -1,6 +1,7 @@
 # app/main.py
 import logging
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.api import endpoints # Import the router
@@ -44,6 +45,15 @@ app = FastAPI(
     description="API for querying the software knowledge graph.",
     version="0.1.0",
     lifespan=lifespan
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Include the API routers

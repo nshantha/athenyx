@@ -284,7 +284,7 @@ class Neo4jManager:
                 WITH f
                 MATCH (f)-[:CONTAINS]->(cc:CodeChunk)
                 WHERE cc.embedding IS NOT NULL
-                RETURN cc.text AS text, 
+                RETURN cc.content AS text, 
                        f.path AS path, 
                        cc.start_line AS start_line, 
                        0.95 AS score  // High score for README files
@@ -309,11 +309,12 @@ class Neo4jManager:
             # Build the vector search query with optional repository filtering and README boosting
             if repository_url:
                 query = """
-                MATCH (cc:CodeChunk)-[:BELONGS_TO]->(f:File)-[:BELONGS_TO]->(r:Repository {url: $repo_url})
-                WHERE cc.embedding IS NOT NULL
-                WITH cc, f, gds.similarity.cosine(cc.embedding, $query_embedding) AS base_score
-                
-                // Boost score for README files and documentation
+                MATCH (cc:CodeChunk)
+                MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
+                WITH cc, f
+                CALL db.index.vector.queryNodes('code_chunk_embeddings', $k, $query_embedding) 
+                YIELD node, score WHERE node = cc
+                WITH cc, f, score AS base_score
                 WITH cc, f, base_score,
                      CASE 
                         WHEN f.path CONTAINS 'README.md' THEN base_score * 1.5
@@ -324,7 +325,7 @@ class Neo4jManager:
                      END AS score
                 WHERE score > 0.4  // Lower threshold to catch more potential matches
                 
-                RETURN cc.text AS text, 
+                RETURN cc.content AS text, 
                        f.path AS path, 
                        cc.start_line AS start_line, 
                        score
@@ -334,11 +335,12 @@ class Neo4jManager:
                 params = {"query_embedding": query_embedding, "k": k, "repo_url": repository_url}
             else:
                 query = """
-                MATCH (cc:CodeChunk)-[:BELONGS_TO]->(f:File)
-                WHERE cc.embedding IS NOT NULL
-                WITH cc, f, gds.similarity.cosine(cc.embedding, $query_embedding) AS base_score
-                
-                // Boost score for README files and documentation
+                MATCH (cc:CodeChunk)
+                MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
+                WITH cc, f
+                CALL db.index.vector.queryNodes('code_chunk_embeddings', $k, $query_embedding) 
+                YIELD node, score WHERE node = cc
+                WITH cc, f, score AS base_score
                 WITH cc, f, base_score,
                      CASE 
                         WHEN f.path CONTAINS 'README.md' THEN base_score * 1.5
@@ -349,7 +351,7 @@ class Neo4jManager:
                      END AS score
                 WHERE score > 0.4  // Lower threshold to catch more potential matches
                 
-                RETURN cc.text AS text, 
+                RETURN cc.content AS text, 
                        f.path AS path, 
                        cc.start_line AS start_line, 
                        score
@@ -395,13 +397,13 @@ class Neo4jManager:
             query = """
             MATCH (cc:CodeChunk)
             WHERE (
-                cc.text CONTAINS 'service' OR
-                cc.text CONTAINS 'microservice' OR
-                cc.text CONTAINS 'architecture'
+                cc.content CONTAINS 'service' OR
+                cc.content CONTAINS 'microservice' OR
+                cc.content CONTAINS 'architecture'
             )
             MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
             RETURN 
-                cc.text AS text, 
+                cc.content AS text, 
                 f.path AS path, 
                 cc.start_line AS start_line,
                 CASE 
@@ -417,15 +419,15 @@ class Neo4jManager:
             query = """
             MATCH (cc:CodeChunk)
             WHERE (
-                cc.text CONTAINS 'architect' OR 
-                cc.text CONTAINS 'structure' OR
-                cc.text CONTAINS 'diagram' OR
-                cc.text CONTAINS 'workflow' OR
-                cc.text CONTAINS 'design'
+                cc.content CONTAINS 'architect' OR 
+                cc.content CONTAINS 'structure' OR
+                cc.content CONTAINS 'diagram' OR
+                cc.content CONTAINS 'workflow' OR
+                cc.content CONTAINS 'design'
             )
             MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
             RETURN 
-                cc.text AS text, 
+                cc.content AS text, 
                 f.path AS path, 
                 cc.start_line AS start_line,
                 CASE 
@@ -446,7 +448,7 @@ class Neo4jManager:
             MATCH (cc:CodeChunk)
             WHERE (f)-[:CONTAINS]->(cc)
             RETURN 
-                cc.text AS text, 
+                cc.content AS text, 
                 f.path AS path, 
                 cc.start_line AS start_line,
                 4.0 AS priority
@@ -460,7 +462,7 @@ class Neo4jManager:
             MATCH (cc:CodeChunk)
             WHERE (f)-[:CONTAINS]->(cc)
             RETURN 
-                cc.text AS text, 
+                cc.content AS text, 
                 f.path AS path, 
                 cc.start_line AS start_line,
                 3.0 AS priority
@@ -489,15 +491,15 @@ class Neo4jManager:
             MATCH (cc:CodeChunk)
             WHERE (f)-[:CONTAINS]->(cc)
             AND (
-                cc.text CONTAINS 'project' OR
-                cc.text CONTAINS 'structure' OR
-                cc.text CONTAINS 'directory' OR
-                cc.text CONTAINS 'folder' OR
-                cc.text CONTAINS 'organization' OR
-                cc.text CONTAINS 'layout'
+                cc.content CONTAINS 'project' OR
+                cc.content CONTAINS 'structure' OR
+                cc.content CONTAINS 'directory' OR
+                cc.content CONTAINS 'folder' OR
+                cc.content CONTAINS 'organization' OR
+                cc.content CONTAINS 'layout'
             )
             RETURN 
-                cc.text AS text, 
+                cc.content AS text, 
                 f.path AS path, 
                 cc.start_line AS start_line,
                 1.0 AS priority
@@ -515,7 +517,7 @@ class Neo4jManager:
                 f.path ENDS WITH '.md'
             )
             RETURN 
-                cc.text AS text, 
+                cc.content AS text, 
                 f.path AS path, 
                 cc.start_line AS start_line,
                 CASE 
@@ -532,10 +534,10 @@ class Neo4jManager:
             query = """
             MATCH (cc:CodeChunk)
             WHERE 
-                cc.text CONTAINS $topic
+                cc.content CONTAINS $topic
             MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
             RETURN 
-                cc.text AS text, 
+                cc.content AS text, 
                 f.path AS path, 
                 cc.start_line AS start_line,
                 CASE 
@@ -663,7 +665,7 @@ class Neo4jManager:
             if keywords and len(keywords) > 0:
                 # This is a simplified approach - for production, you'd want to integrate this more carefully
                 # into each specific query type
-                keyword_conditions = " OR ".join([f"cc.text CONTAINS '{kw}'" for kw in keywords])
+                keyword_conditions = " OR ".join([f"cc.content CONTAINS '{kw}'" for kw in keywords])
                 query = f"""
                 MATCH (cc:CodeChunk)
                 WHERE {keyword_conditions}

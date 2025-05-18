@@ -54,11 +54,16 @@ async def run_agent(query: str, conversation_history: str = None, repository_con
     system_message = (
         "You are a helpful AI assistant that answers questions about a software project. "
         "You have access to a code knowledge graph stored in Neo4j, which contains information about the project structure, files, functions, and code semantics. "
-        "ALWAYS use the CodeBaseRetriever tool FIRST for ANY question about the project, even for high-level overviews or basic questions. "
-        "The CodeBaseRetriever is your primary source of information about the codebase and should be consulted before responding. "
-        "If you're asked about project details, structure, purpose, or features, ALWAYS use the CodeBaseRetriever "
-        "to gather relevant information first, then synthesize it into a coherent response. "
         "\n\n"
+        "For selecting the appropriate tool, follow these guidelines:\n\n"
+        "1. For questions about what the project is about, its purpose, or general overview, use the ProjectReadmes tool first. "
+        "This tool retrieves all README files in the repository to give you comprehensive project information.\n\n"
+        "2. For questions about specific components, services, or parts of the codebase, use the CodeBaseRetriever tool "
+        "with a targeted search query focused on that specific component.\n\n"
+        "3. For questions about project structure or architecture, use the DirectoryExplorer tool first, "
+        "followed by the ProjectInfo tool.\n\n"
+        "4. For general code questions, use the CodeBaseRetriever tool with an appropriate search query.\n\n"
+        "Always focus your search on the most relevant parts of the codebase for the specific question being asked.\n\n"
     )
     
     # Add repository context if provided

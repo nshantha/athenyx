@@ -265,7 +265,7 @@ class Neo4jLoader:
                 # Create the chunk node
                 create_query = """
                 MERGE (cc:CodeChunk {chunk_id: $chunk_id})
-                SET cc.text = $content,
+                SET cc.content = $content,
                     cc.start_line = $start_line,
                     cc.end_line = $end_line,
                     cc.repo_url = $repo_url,

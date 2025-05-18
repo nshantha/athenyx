@@ -1,6 +1,6 @@
 # app/agent/tools.py
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from langchain_core.tools import Tool
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.callbacks import CallbackManagerForRetrieverRun, AsyncCallbackManagerForRetrieverRun # Import Async manager
@@ -485,15 +485,15 @@ def get_tools() -> List[Tool]:
                     # Find information about services
                     results = await db_manager.raw_cypher_query("""
                     MATCH (cc:CodeChunk)
-                    WHERE cc.text CONTAINS "service" 
-                       OR cc.text CONTAINS "microservice"
-                    RETURN cc.path AS path, substring(cc.text, 0, 300) AS preview
+                    WHERE cc.content CONTAINS "service" 
+                       OR cc.content CONTAINS "microservice"
+                    RETURN cc.path AS path, cc.content AS content
                     LIMIT 15
                     """)
                     if results:
                         formatted = ["## Services/Microservices Information in Database\n"]
                         for item in results:
-                            formatted.append(f"**Path**: {item.get('path')}\n**Preview**: {item.get('preview')}...\n")
+                            formatted.append(f"**Path**: {item.get('path')}\n**Preview**: {item.get('content')}...\n")
                         return "\n\n".join(formatted)
                         
                 elif query_type == "counts":
@@ -527,7 +527,7 @@ def get_tools() -> List[Tool]:
                     results = await db_manager.raw_cypher_query("""
                     MATCH (cc:CodeChunk)
                     WHERE cc.path CONTAINS 'README.md'
-                    RETURN cc.path AS path, cc.text AS content
+                    RETURN cc.path AS path, cc.content AS content
                     LIMIT 5
                     """)
                     if results:
@@ -701,6 +701,102 @@ def get_tools() -> List[Tool]:
     except Exception as e:
         logger.error(f"Failed to initialize DirectoryExplorer tool: {e}", exc_info=True)
     
+    # Add a new function to get all README files in a repository
+    try:
+        async def get_all_readme_files(repository_url: Optional[str] = None) -> str:
+            """
+            Retrieves and combines all README files in a repository to provide comprehensive project information.
+            
+            Args:
+                repository_url: Optional URL of the repository to analyze
+            """
+            try:
+                # First get the active repository if none specified
+                if not repository_url:
+                    active_repo = await db_manager.get_active_repository()
+                    if active_repo:
+                        repository_url = active_repo.get('url')
+                    
+                if not repository_url:
+                    return "No repository specified, and no active repository found."
+                    
+                # Get all README files from the database
+                query = """
+                MATCH (f:File)
+                WHERE f.repo_url = $repo_url AND 
+                      (f.path CONTAINS 'README' OR f.path CONTAINS 'readme')
+                WITH f
+                MATCH (f)-[:CONTAINS]->(cc:CodeChunk)
+                RETURN f.path AS path, cc.content AS content, cc.start_line AS start_line
+                ORDER BY f.path, cc.start_line
+                """
+                
+                results = await db_manager.run_query(query, {"repo_url": repository_url})
+                
+                if not results or len(results) == 0:
+                    # Try a more general approach to find documentation files
+                    fallback_query = """
+                    MATCH (f:File)
+                    WHERE f.repo_url = $repo_url AND 
+                          (f.is_documentation = true OR f.path ENDS WITH '.md')
+                    WITH f
+                    MATCH (f)-[:CONTAINS]->(cc:CodeChunk)
+                    RETURN f.path AS path, cc.content AS content, cc.start_line AS start_line
+                    ORDER BY 
+                        CASE 
+                            WHEN f.path CONTAINS 'README' THEN 0
+                            WHEN f.path CONTAINS '/docs/' THEN 1
+                            ELSE 2
+                        END, 
+                        f.path, cc.start_line
+                    LIMIT 20
+                    """
+                    results = await db_manager.run_query(fallback_query, {"repo_url": repository_url})
+                
+                if not results or len(results) == 0:
+                    return f"No README or documentation files found for repository {repository_url}. Try using the CodeBaseRetriever tool for more general information."
+                
+                # Group content by file path
+                readme_files = {}
+                for result in results:
+                    path = result.get('path')
+                    content = result.get('content')
+                    
+                    if path not in readme_files:
+                        readme_files[path] = []
+                        
+                    readme_files[path].append(content)
+                
+                # Format the output
+                repo_name = repository_url.split('/')[-1].replace('.git', '')
+                lines = [f"# Project Information for {repo_name}\n"]
+                
+                # Sort files to prioritize root README
+                sorted_paths = sorted(readme_files.keys(), key=lambda p: 0 if p.count('/') <= 1 and 'README' in p else 1)
+                
+                for path in sorted_paths:
+                    lines.append(f"## {path}\n")
+                    content = "\n".join(readme_files[path])
+                    lines.append(content)
+                    lines.append("\n---\n")
+                
+                return "\n".join(lines)
+                
+            except Exception as e:
+                logger.error(f"Error retrieving README files: {e}", exc_info=True)
+                return f"Error retrieving README files: {str(e)}"
+
+        readme_tool = Tool(
+            name="ProjectReadmes",
+            func=get_all_readme_files,
+            description="Retrieves and combines ALL README files in a repository to provide comprehensive project information. Use this tool FIRST when asked about what a project is about, its purpose, or for general project overview.",
+            coroutine=get_all_readme_files
+        )
+        tools.append(readme_tool)
+        logger.info("ProjectReadmes tool initialized.")
+    except Exception as e:
+        logger.error(f"Failed to initialize ProjectReadmes tool: {e}", exc_info=True)
+
     return tools
 
 # Instantiate tools once

@@ -52,7 +52,7 @@ class GitLoader:
         # Replace any problematic characters with underscores
         repo_name = repo_name.replace('.', '_').replace('-', '_')
         
-            return repo_name
+        return repo_name
         
     def get_repo_and_commit(self) -> Tuple[git.Repo, str]:
         """
@@ -70,7 +70,7 @@ class GitLoader:
                 logger.info(f"Repository exists at {self.clone_dir}, pulling latest changes...")
                 self.repo = git.Repo(self.clone_dir)
                 # Ensure we're on the right branch if specified
-                       if self.branch:
+                if self.branch:
                     current_branch = self.repo.active_branch.name
                     if current_branch != self.branch:
                         logger.info(f"Switching from {current_branch} to {self.branch}")
@@ -147,7 +147,7 @@ class GitLoader:
                     # Skip if file matches a gitignore pattern
                     if should_ignore(rel_path):
                         logger.debug(f"Skipping ignored file: {rel_path}")
-                            continue
+                        continue
                             
                     try:
                         with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
