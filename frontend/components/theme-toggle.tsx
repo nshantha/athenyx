@@ -5,8 +5,13 @@ import { useTheme } from 'next-themes'
 
 import { Button } from '@/components/ui/button'
 import { IconMoon, IconSun } from '@/components/ui/icons'
+import { cn } from '@/lib/utils'
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  compact?: boolean
+}
+
+export function ThemeToggle({ compact = false }: ThemeToggleProps) {
   const { setTheme, theme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
   const [_, startTransition] = React.useTransition()
@@ -19,7 +24,8 @@ export function ThemeToggle() {
   return (
     <Button
       variant="ghost"
-      size="icon"
+      size={compact ? "sm" : "icon"}
+      className={cn(compact && "h-8 w-8 p-0")}
       onClick={() => {
         startTransition(() => {
           setTheme(theme === 'light' ? 'dark' : 'light')

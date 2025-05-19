@@ -122,10 +122,16 @@ class Neo4jLoader:
         query = """
         MERGE (r:Repository {url: $url}) 
         SET r.name = $name,
-            r.service_name = $service_name
+            r.service_name = $service_name,
+            r.last_commit_hash = $last_commit_hash
         RETURN r
         """
-        params = {"url": url, "name": name, "service_name": service_name}
+        params = {
+            "url": url, 
+            "name": name, 
+            "service_name": service_name,
+            "last_commit_hash": ""  # Initialize with empty string to avoid null property warnings
+        }
         try:
             await db_manager.run_query(query, params)
             logger.info(f"Created Repository node: {name}")

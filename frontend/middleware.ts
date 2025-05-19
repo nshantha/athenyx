@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Set this to true to enable authentication
-const ENABLE_AUTH = false
+const ENABLE_AUTH = true
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()

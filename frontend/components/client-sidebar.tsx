@@ -1,7 +1,7 @@
 'use client'
 
-import { SidebarDesktop } from '@/components/sidebar'
+import { CollapsibleSidebar } from '@/components/collapsible-sidebar'
 
 export default function ClientSidebar() {
-  return <SidebarDesktop />
+  return <CollapsibleSidebar />
 } 

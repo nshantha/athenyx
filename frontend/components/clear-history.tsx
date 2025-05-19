@@ -17,13 +17,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog'
-import { IconSpinner } from '@/components/ui/icons'
+import { IconSpinner, IconTrash } from '@/components/ui/icons'
+import { cn } from '@/lib/utils'
 
 interface ClearHistoryProps {
   clearChats: () => ServerActionResult<void>
+  compact?: boolean
 }
 
-export function ClearHistory({ clearChats }: ClearHistoryProps) {
+export function ClearHistory({ clearChats, compact = false }: ClearHistoryProps) {
   const [open, setOpen] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
   const router = useRouter()
@@ -31,9 +33,14 @@ export function ClearHistory({ clearChats }: ClearHistoryProps) {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" disabled={isPending}>
+        <Button 
+          variant="ghost" 
+          disabled={isPending}
+          size={compact ? "sm" : "default"}
+          className={cn(compact && "h-8 w-8 p-0")}
+        >
           {isPending && <IconSpinner className="mr-2" />}
-          Clear history
+          {compact ? <IconTrash className="h-4 w-4" /> : "Clear history"}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

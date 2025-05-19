@@ -66,13 +66,15 @@ async def fix_repository_ingestion(repo_url: str, repo_description: str = None):
             SET r.service_name = $service_name,
                 r.description = $description,
                 r.last_updated = datetime(),
+                r.last_commit_hash = $last_commit_hash,
                 r.is_active = true
             RETURN r
             """,
             {
                 "url": repo_url, 
                 "service_name": service_name,
-                "description": repo_description
+                "description": repo_description,
+                "last_commit_hash": ""
             }
         )
     else:
@@ -84,13 +86,15 @@ async def fix_repository_ingestion(repo_url: str, repo_description: str = None):
             SET r.service_name = $service_name,
                 r.description = $description,
                 r.last_updated = datetime(),
+                r.last_commit_hash = $last_commit_hash,
                 r.is_active = true
             RETURN r
             """,
             {
                 "url": repo_url, 
                 "service_name": service_name,
-                "description": repo_description
+                "description": repo_description,
+                "last_commit_hash": ""
             }
         )
     

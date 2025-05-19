@@ -8,6 +8,7 @@ import { IconNextChat, IconSeparator, IconSidebar } from '@/components/ui/icons'
 import { UserMenu } from '@/components/user-menu'
 import { cookies } from 'next/headers'
 import MobileSidebar from '@/components/mobile-sidebar'
+import { LogoLink } from '@/components/logo-link'
 
 export async function Header() {
   const cookieStore = cookies()
@@ -20,11 +21,11 @@ export async function Header() {
           <MobileSidebar />
         </div>
         
-        <Link href="/" rel="nofollow" className="flex items-center">
+        <LogoLink>
           <IconNextChat className="mr-2 h-6 w-6 dark:hidden" inverted />
           <IconNextChat className="mr-2 hidden h-6 w-6 dark:block" />
           <span className="font-bold text-lg">Actuamind</span>
-        </Link>
+        </LogoLink>
         
         <div className="flex items-center ml-4">
           <IconSeparator className="h-6 w-6 text-muted-foreground/50" />

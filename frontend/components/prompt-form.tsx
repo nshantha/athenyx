@@ -18,6 +18,7 @@ export interface PromptProps {
   setInput: (value: string) => void
   isLoading: boolean
   formProps?: React.FormHTMLAttributes<HTMLFormElement>
+  isEmptyScreen?: boolean
 }
 
 export function PromptForm({
@@ -25,7 +26,8 @@ export function PromptForm({
   input,
   setInput,
   isLoading,
-  formProps
+  formProps,
+  isEmptyScreen = false
 }: PromptProps) {
   const { formRef, onKeyDown } = useEnterSubmit()
   const inputRef = React.useRef<HTMLTextAreaElement>(null)
@@ -50,15 +52,21 @@ export function PromptForm({
       onSubmit={formProps?.onSubmit || handleSubmit}
       ref={formRef}
       {...formProps}
+      className="w-full mx-auto max-w-3xl px-4"
     >
-      <div className="relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background px-8 sm:rounded-md sm:border sm:px-12">
+      <div 
+        className={cn(
+          "relative flex max-h-60 w-full grow flex-col overflow-hidden bg-background rounded-md border sm:px-4",
+          isEmptyScreen && "shadow-lg"
+        )}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
               href="/"
               className={cn(
                 buttonVariants({ size: 'sm', variant: 'outline' }),
-                'absolute left-0 top-4 h-8 w-8 rounded-full bg-background p-0 sm:left-4'
+                'absolute left-2 top-4 h-8 w-8 rounded-full bg-background p-0 sm:left-4'
               )}
             >
               <IconPlus />
@@ -74,11 +82,11 @@ export function PromptForm({
           rows={1}
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder="Send a message."
+          placeholder={isEmptyScreen ? "Ask me anything..." : "Send a message."}
           spellCheck={false}
-          className="min-h-[60px] w-full resize-none bg-transparent px-4 py-[1.3rem] focus-within:outline-none sm:text-sm"
+          className="min-h-[60px] w-full resize-none bg-transparent px-12 py-[1.3rem] focus-within:outline-none sm:text-sm"
         />
-        <div className="absolute right-0 top-4 sm:right-4">
+        <div className="absolute right-2 top-4 sm:right-4">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

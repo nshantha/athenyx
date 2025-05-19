@@ -71,13 +71,15 @@ async def create_repository(repo: RepositoryCreate, background_tasks: Background
         MERGE (r:Repository {url: $url})
         SET r.service_name = $service_name,
             r.description = $description,
-            r.last_updated = datetime()
+            r.last_updated = datetime(),
+            r.last_commit_hash = $last_commit_hash
         RETURN r
         """
         params = {
             "url": repo_url,
             "service_name": service_name,
-            "description": repo.description or ""
+            "description": repo.description or "",
+            "last_commit_hash": ""  # Initialize with empty string to avoid null property
         }
         
         await db_manager.run_query(query, params)

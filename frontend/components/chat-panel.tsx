@@ -4,6 +4,8 @@ import { PromptForm } from '@/components/prompt-form'
 import { ButtonScrollToBottom } from '@/components/button-scroll-to-bottom'
 import { IconRefresh, IconStop } from '@/components/ui/icons'
 import { Message } from '@/lib/types'
+import { useSidebar } from '@/lib/sidebar-context'
+import { cn } from '@/lib/utils'
 
 export interface ChatPanelProps {
   id?: string
@@ -28,50 +30,59 @@ export function ChatPanel({
   messages,
   onSubmit
 }: ChatPanelProps) {
+  const { isExpanded } = useSidebar()
+  
+  // Calculate left padding based on sidebar state
+  // When sidebar is expanded, add more padding to center the content
+  const sidebarWidth = isExpanded ? 'lg:pl-20 md:pl-16 pl-12 lg:pr-4 md:pr-2 pr-0' : 'pl-4'
+  
   return (
     <div className="fixed inset-x-0 bottom-0 bg-gradient-to-b from-muted/10 from-10% to-muted/30 to-50%">
       <ButtonScrollToBottom />
-      <div className="mx-auto sm:max-w-2xl sm:px-4">
-        <div className="flex h-10 items-center justify-center">
-          {isLoading ? (
-            <Button
-              variant="outline"
-              onClick={() => stop()}
-              className="bg-background"
-            >
-              <IconStop className="mr-2" />
-              Stop generating
-            </Button>
-          ) : (
-            messages?.length > 0 && (
+      <div className="relative mx-auto w-full flex justify-center">
+        <div className={cn("w-full max-w-3xl px-4", sidebarWidth)}>
+          <div className="flex h-10 items-center justify-center">
+            {isLoading ? (
               <Button
                 variant="outline"
-                onClick={() => reload()}
+                onClick={() => stop()}
                 className="bg-background"
               >
-                <IconRefresh className="mr-2" />
-                Regenerate response
+                <IconStop className="mr-2" />
+                Stop generating
               </Button>
-            )
-          )}
-        </div>
-        <div className="space-y-4 border-t bg-background px-4 py-2 shadow-lg sm:rounded-t-xl sm:border md:py-4">
-          <PromptForm
-            onSubmit={async (value) => {
-              if (onSubmit) {
-                // If onSubmit is provided, use the form's submit handler
-                return
-              }
-              // Otherwise use the append function
-              append({
-                content: value
-              })
-            }}
-            input={input}
-            setInput={setInput}
-            isLoading={isLoading}
-            formProps={onSubmit ? { onSubmit } : undefined}
-          />
+            ) : (
+              messages?.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => reload()}
+                  className="bg-background"
+                >
+                  <IconRefresh className="mr-2" />
+                  Regenerate response
+                </Button>
+              )
+            )}
+          </div>
+          <div className="space-y-4 border-t bg-background py-2 shadow-lg sm:rounded-t-xl sm:border md:py-4">
+            <PromptForm
+              onSubmit={async (value) => {
+                if (onSubmit) {
+                  // If onSubmit is provided, use the form's submit handler
+                  return
+                }
+                // Otherwise use the append function
+                append({
+                  content: value
+                })
+              }}
+              input={input}
+              setInput={setInput}
+              isLoading={isLoading}
+              formProps={onSubmit ? { onSubmit } : undefined}
+              isEmptyScreen={false}
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -233,7 +233,9 @@ class Neo4jManager:
         """Updates the last indexed commit SHA for a repository."""
         query = """
         MERGE (r:Repository {url: $repo_url})
-        SET r.last_indexed_commit_sha = $commit_sha, r.last_indexed_timestamp = timestamp()
+        SET r.last_indexed_commit_sha = $commit_sha, 
+            r.last_indexed_timestamp = timestamp(),
+            r.last_commit_hash = $commit_sha
         """
         parameters = {"repo_url": repo_url, "commit_sha": commit_sha}
         await self.run_query(query, parameters)
@@ -310,7 +312,7 @@ class Neo4jManager:
             if repository_url:
                 query = """
                 MATCH (cc:CodeChunk)
-                MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
+                MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc)
                 WITH cc, f
                 CALL db.index.vector.queryNodes('code_chunk_embeddings', $k, $query_embedding) 
                 YIELD node, score WHERE node = cc
@@ -336,7 +338,7 @@ class Neo4jManager:
             else:
                 query = """
                 MATCH (cc:CodeChunk)
-                MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
+                MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc)
                 WITH cc, f
                 CALL db.index.vector.queryNodes('code_chunk_embeddings', $k, $query_embedding) 
                 YIELD node, score WHERE node = cc
@@ -401,7 +403,7 @@ class Neo4jManager:
                 cc.content CONTAINS 'microservice' OR
                 cc.content CONTAINS 'architecture'
             )
-            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
+            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc)
             RETURN 
                 cc.content AS text, 
                 f.path AS path, 
@@ -425,7 +427,7 @@ class Neo4jManager:
                 cc.content CONTAINS 'workflow' OR
                 cc.content CONTAINS 'design'
             )
-            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
+            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc)
             RETURN 
                 cc.content AS text, 
                 f.path AS path, 
@@ -510,7 +512,7 @@ class Neo4jManager:
             # General project overview information
             query = """
             MATCH (cc:CodeChunk)
-            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
+            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc)
             WHERE (
                 f.path CONTAINS 'README.md' OR 
                 f.path CONTAINS '/docs/' OR
@@ -535,7 +537,7 @@ class Neo4jManager:
             MATCH (cc:CodeChunk)
             WHERE 
                 cc.content CONTAINS $topic
-            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
+            MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc)
             RETURN 
                 cc.content AS text, 
                 f.path AS path, 
@@ -621,8 +623,8 @@ class Neo4jManager:
                 MATCH (f1:File)
                 MATCH (f2:File)
                 WHERE f1 <> f2
-                MATCH (cc1:CodeChunk) WHERE (f1)-[:CONTAINS_CHUNK]->(cc1) OR (f1)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc1)
-                MATCH (cc2:CodeChunk) WHERE (f2)-[:CONTAINS_CHUNK]->(cc2) OR (f2)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc2)
+                MATCH (cc1:CodeChunk) WHERE (f1)-[:CONTAINS]->(cc1)
+                MATCH (cc2:CodeChunk) WHERE (f2)-[:CONTAINS]->(cc2)
                 WHERE cc1.text CONTAINS f2.path OR cc2.text CONTAINS f1.path
                 RETURN f1.path AS source, f2.path AS target, count(*) AS strength
                 ORDER BY strength DESC
@@ -670,7 +672,7 @@ class Neo4jManager:
                 MATCH (cc:CodeChunk)
                 WHERE {keyword_conditions}
                 WITH cc
-                MATCH (f:File) WHERE (f)-[:CONTAINS_CHUNK]->(cc) OR (f)-[:CONTAINS]->()-[:CONTAINS_CHUNK]->(cc)
+                MATCH (f:File) WHERE (f)-[:CONTAINS]->(cc)
                 WITH DISTINCT f
                 {query}
                 """
@@ -697,7 +699,7 @@ class Neo4jManager:
         RETURN r.url as url, 
                r.service_name as service_name, 
                r.description as description,
-               r.last_commit as last_commit,
+               COALESCE(r.last_commit_hash, '') as last_commit,
                r.last_indexed_commit_sha as last_indexed
         ORDER BY r.url
         """
@@ -770,7 +772,7 @@ class Neo4jManager:
         RETURN r.url as url, 
                r.service_name as service_name, 
                r.description as description,
-               r.last_commit as last_commit,
+               COALESCE(r.last_commit_hash, '') as last_commit,
                r.last_indexed_commit_sha as last_indexed
         """
         
@@ -785,7 +787,7 @@ class Neo4jManager:
             RETURN r.url as url, 
                   r.service_name as service_name, 
                   r.description as description,
-                  r.last_commit as last_commit,
+                  COALESCE(r.last_commit_hash, '') as last_commit,
                   r.last_indexed_commit_sha as last_indexed
             LIMIT 1
             """

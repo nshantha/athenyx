@@ -1,5 +1,4 @@
 import React from 'react'
-
 import { Button } from '@/components/ui/button'
 import { IconArrowRight } from '@/components/ui/icons'
 import { useRepository } from '@/lib/repository-context'
@@ -27,8 +26,8 @@ export function EmptyScreen({ setInput }: EmptyScreenProps) {
   const { activeRepository } = useRepository()
 
   return (
-    <div className="mx-auto max-w-2xl px-4">
-      <div className="rounded-lg border bg-background p-8">
+    <div className="w-full px-0 flex flex-col items-center">
+      <div className="rounded-lg border bg-background p-8 w-full max-w-3xl">
         <h1 className="mb-2 text-lg font-semibold">
           Welcome to Actuamind Code Explorer!
         </h1>

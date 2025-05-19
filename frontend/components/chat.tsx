@@ -8,9 +8,12 @@ import { EmptyScreen } from '@/components/empty-screen'
 import { ChatScrollAnchor } from '@/components/chat-scroll-anchor'
 import { toast } from 'react-hot-toast'
 import { useRepository } from '@/lib/repository-context'
+import { useSidebar } from '@/lib/sidebar-context'
 import { queryApi } from '@/lib/api'
 import { nanoid } from '@/lib/utils'
 import { Message } from '@/lib/types'
+import { PromptForm } from '@/components/prompt-form'
+import { updateChat } from '@/app/actions'
 
 export interface ChatProps {
   initialMessages?: Message[]
@@ -20,12 +23,52 @@ export interface ChatProps {
 
 export function Chat({ id = nanoid(), initialMessages = [], className }: ChatProps) {
   // State for messages
-  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [messages, setMessages] = useState<Message[]>(initialMessages || [])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   
+  // Debug log for initialMessages
+  useEffect(() => {
+    console.log('Chat component initialized with:', { 
+      id, 
+      initialMessagesProvided: !!initialMessages,
+      messageCount: initialMessages?.length || 0
+    });
+  }, [id, initialMessages]);
+  
   // Get active repository from context
   const { activeRepository } = useRepository()
+  
+  // Get sidebar state
+  const { isExpanded } = useSidebar()
+  
+  // Save messages to database when they change
+  useEffect(() => {
+    // Don't save if there are no messages or if we're still loading
+    if (messages.length === 0 || isLoading) return
+    
+    // Don't save if these are just the initial messages
+    if (JSON.stringify(messages) === JSON.stringify(initialMessages)) return
+    
+    // Use a debounce mechanism to avoid too frequent updates
+    const timeoutId = setTimeout(() => {
+      // Save messages to database
+      const saveMessages = async () => {
+        try {
+          console.log('Saving chat with id:', id, 'and messages:', messages.length);
+          const result = await updateChat(id, messages)
+          console.log('Save result:', result);
+        } catch (error) {
+          console.error('Failed to save messages:', error)
+        }
+      }
+      
+      saveMessages()
+    }, 1000) // Wait 1 second before saving to avoid rapid consecutive updates
+    
+    // Clear timeout if effect runs again before timeout completes
+    return () => clearTimeout(timeoutId)
+  }, [messages, id, isLoading, initialMessages])
   
   // Function to send a message
   const sendMessage = async (content: string) => {
@@ -51,11 +94,16 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
         }).join('\n\n')
       }
       
+      // Check if active repository is available
+      if (!activeRepository?.url) {
+        throw new Error('No active repository selected. Please select a repository in the sidebar.')
+      }
+      
       // Prepare query request
       const queryRequest = {
         query: content,
         conversation_history: conversationHistory || null,
-        repository_url: activeRepository?.url
+        repository_url: activeRepository.url
       }
       
       // Stream the response
@@ -90,9 +138,7 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
               const data = line.substring(6)
               
               // Handle escaped characters that might affect markdown
-              // We need to be careful with newlines as they're important for markdown
               const processedData = data
-                // For newlines, escape sequences, and other characters that might appear in the SSE stream
                 .replace(/\\n/g, '\n')
                 .replace(/\\r/g, '\r')
                 .replace(/\\t/g, '\t')
@@ -116,14 +162,28 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
       } catch (apiError: any) {
         console.error('API error:', apiError)
         
-        // Create an error message
+        // Create a more user-friendly error message
+        let errorMsg = 'Failed to connect to the API. Please check if the backend server is running.'
+        
+        if (apiError.message) {
+          if (apiError.message.includes('Failed to fetch')) {
+            errorMsg = 'Unable to connect to the server. Please check your internet connection or try again later.'
+          } else {
+            errorMsg = `Error: ${apiError.message}`
+          }
+        }
+        
         const errorMessage: Message = {
           id: nanoid(),
-          content: `Sorry, I encountered an error: ${apiError.message || 'Failed to connect to the API. Please check if the backend server is running.'}`,
+          content: errorMsg,
           role: 'assistant'
         }
         
-        setMessages(prev => [...prev, errorMessage])
+        setMessages(prev => {
+          // Remove empty assistant message if exists
+          const filtered = prev.filter(m => !(m.role === 'assistant' && !m.content))
+          return [...filtered, errorMessage]
+        })
       }
       
       setIsLoading(false)
@@ -185,29 +245,57 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
     }
   }
   
+  // Check if we should display the empty screen with centered prompt
+  const isEmpty = messages.length === 0
+  
+  // Calculate left padding based on sidebar state
+  // When sidebar is expanded, add more padding to center the content
+  const sidebarWidth = isExpanded ? 'lg:pl-20 md:pl-16 pl-12 lg:pr-4 md:pr-2 pr-0' : 'pl-4'
+  
   return (
-    <>
-      <div className={cn('pb-[200px] pt-4 md:pt-10 max-w-3xl mx-auto', className)}>
-        {messages.length ? (
-          <>
-            <ChatList messages={messages} />
-            <ChatScrollAnchor trackVisibility={isLoading} />
-          </>
-        ) : (
-          <EmptyScreen setInput={setInput} />
-        )}
-      </div>
-      <ChatPanel
-        id={id}
-        isLoading={isLoading}
-        stop={stop}
-        append={(message: { content: string }) => sendMessage(message.content)}
-        reload={reload}
-        messages={messages}
-        input={input}
-        setInput={setInput}
-        onSubmit={handleSubmit}
-      />
-    </>
+    <div className="flex flex-col h-screen">
+      {isEmpty ? (
+        // Empty screen with centered prompt
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className={cn("w-full max-w-3xl px-4", sidebarWidth)}>
+            <EmptyScreen setInput={setInput} />
+            <div className="mt-8">
+              <PromptForm
+                onSubmit={async (value) => {
+                  await sendMessage(value);
+                }}
+                input={input}
+                setInput={setInput}
+                isLoading={isLoading}
+                isEmptyScreen={true}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        // Chat interface with messages and bottom prompt
+        <>
+          <div className={cn('flex-1 overflow-y-auto pb-[120px] pt-4 md:pt-10', className)}>
+            <div className={cn("w-full max-w-3xl mx-auto px-4 md:px-8 lg:px-10", sidebarWidth)}>
+              <ChatList messages={messages} />
+              <ChatScrollAnchor trackVisibility={isLoading} />
+            </div>
+          </div>
+          
+          {/* Fixed position ChatPanel with centered content */}
+          <ChatPanel
+            id={id}
+            isLoading={isLoading}
+            stop={stop}
+            append={(message: { content: string }) => sendMessage(message.content)}
+            reload={reload}
+            messages={messages}
+            input={input}
+            setInput={setInput}
+            onSubmit={handleSubmit}
+          />
+        </>
+      )}
+    </div>
   )
 }

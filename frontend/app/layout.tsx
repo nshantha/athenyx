@@ -45,11 +45,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <Toaster />
         <Providers>
           <div className="flex min-h-screen">
-            {/* Persistent left navigation sidebar for desktop */}
-            <div className="hidden md:block md:w-72 lg:w-80 flex-shrink-0 border-r bg-background">
-              <div className="fixed h-full w-72 lg:w-80 overflow-y-auto">
-                <ClientSidebar />
-              </div>
+            {/* Sidebar - now handled by the CollapsibleSidebar component */}
+            <div className="hidden md:block">
+              <ClientSidebar />
             </div>
             
             {/* Main content */}
