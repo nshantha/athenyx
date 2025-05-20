@@ -38,6 +38,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from '@/components/ui/tooltip'
+import { clearChats } from '@/app/actions'
 
 interface SidebarActionsProps {
   chat: Chat
@@ -108,6 +109,26 @@ export function SidebarActions({
             </Button>
           </TooltipTrigger>
           <TooltipContent>Delete chat</TooltipContent>
+        </Tooltip>
+      </div>
+      <div className="space-y-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start text-sm" 
+              onClick={async () => {
+                if (confirm("Are you sure you want to delete ALL chats? This cannot be undone.")) {
+                  await clearChats();
+                  window.location.href = '/';
+                }
+              }}
+            >
+              <IconTrash className="mr-2 h-4 w-4" />
+              Clear All Chats
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Delete all chat history</TooltipContent>
         </Tooltip>
       </div>
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>

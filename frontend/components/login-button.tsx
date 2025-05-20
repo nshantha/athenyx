@@ -69,7 +69,13 @@ export function LoginButton({
         setIsLoading(true)
         await supabase.auth.signInWithOAuth({
           provider,
-          options: { redirectTo: `${location.origin}/api/auth/callback` }
+          options: { 
+            redirectTo: `${location.origin}/api/auth/callback`,
+            queryParams: {
+              // Add a query param to tell the callback to redirect to /chat
+              redirect_to: '/chat'
+            }
+          }
         })
       }}
       disabled={isLoading}

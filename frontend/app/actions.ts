@@ -246,7 +246,7 @@ export async function getChat(id: string): Promise<Chat | null> {
     // Ensure userId is correct
     if (chatData.userId !== data.user_id) {
       console.log(`Correcting userId mismatch: payload.userId=${chatData.userId}, database.user_id=${data.user_id}`);
-      chatData.userId = data.user_id;
+      chatData.userId = data.user_id || '';
     }
     
     // Set path correctly

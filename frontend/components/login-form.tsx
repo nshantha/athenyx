@@ -68,7 +68,11 @@ export function LoginForm({
     }
 
     setIsLoading(false)
-    router.refresh()
+    if (action === 'sign-in') {
+      window.location.href = '/chat'
+    } else {
+      router.refresh()
+    }
   }
 
   return (
