@@ -134,12 +134,12 @@ export function CollapsibleSidebar() {
       />
       
       <div className={cn(
-        "group h-full transition-all duration-300 ease-in-out border-r bg-background",
+        "group h-full transition-all duration-300 ease-in-out border-r bg-background fixed top-0 bottom-0 left-0 z-40",
         isExpanded ? "w-72 lg:w-80" : "w-16"
       )}>
         <div className="flex h-full flex-col">
-          {/* Header with icons */}
-          <div className="flex h-[52px] items-center justify-between px-2 py-2">
+          {/* Header with icons - fixed at top */}
+          <div className="flex h-[52px] items-center justify-between px-2 py-2 shrink-0">
             {isExpanded ? (
               <>
                 <div className="flex items-center gap-2">
@@ -209,131 +209,115 @@ export function CollapsibleSidebar() {
             )}
           </div>
 
-          {/* Rest of the sidebar components */}
-          {!isExpanded && (
-            <div className="px-2 py-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={handleSearch}
-                    className="h-8 w-8 mx-auto mb-2"
-                  >
-                    <IconSearch className="h-4 w-4" />
-                    <span className="sr-only">Search</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p>Search</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              {session?.user ? (
+          {/* Middle content area - scrollable */}
+          <div className="flex-1 overflow-y-auto">
+            {/* Repository management sections */}
+            {isExpanded ? (
+              <>
+                {/* Repository selector with enhanced styling */}
+                <RepositorySelector />
+                
+                {/* Chat list with separator */}
+                <div className="px-4 py-2 mt-4 border-t border-border">
+                  <div className="font-medium text-primary mb-2">Your chats</div>
+                  <SidebarList userId={session?.user?.id} />
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center py-4 space-y-4">
+                {/* Collapsed view items */}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button 
-                      variant="outline" 
-                      className="w-full justify-center px-0"
-                      onClick={handleNewChat}
-                      disabled={isCreatingChat}
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={handleSearch}
+                      className="h-8 w-8 mx-auto mb-2"
                     >
-                      {isCreatingChat ? (
-                        <span className="animate-spin">⏳</span>
-                      ) : (
-                        <IconPlus className="h-4 w-4" />
-                      )}
+                      <IconSearch className="h-4 w-4" />
+                      <span className="sr-only">Search</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p>New Chat</p>
+                    <p>Search</p>
                   </TooltipContent>
                 </Tooltip>
-              ) : (
-                <div className="flex justify-center">
+                
+                {session?.user ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button 
                         variant="outline" 
-                        size="icon"
-                        onClick={() => toast.error('Please sign in to create a new chat')}
-                        className="h-8 w-8"
+                        className="w-full justify-center px-0"
+                        onClick={handleNewChat}
+                        disabled={isCreatingChat}
                       >
-                        <IconPlus className="h-4 w-4" />
+                        {isCreatingChat ? (
+                          <span className="animate-spin">⏳</span>
+                        ) : (
+                          <IconPlus className="h-4 w-4" />
+                        )}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p>Sign in to create a new chat</p>
+                      <p>New Chat</p>
                     </TooltipContent>
                   </Tooltip>
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* User and controls */}
-          {isExpanded && (
-            <div className="flex h-[52px] items-center justify-between px-4">
-              <div className="flex items-center">
-                {session?.user && <UserMenu user={session.user} />}
-              </div>
-              <div className="flex items-center justify-end space-x-2">
-                <ThemeToggle />
-                <ClearHistory clearChats={clearChats} />
-              </div>
-            </div>
-          )}
-          
-          {/* Repository and chat list */}
-          <div className={cn(
-            "flex-1 overflow-auto",
-            !isExpanded && "scrollbar-none"
-          )}>
-            {isExpanded ? (
-              <>
-                <RepositorySelector />
-                <SidebarList userId={session?.user?.id} />
-              </>
-            ) : (
-              <div className="flex flex-col items-center py-4 space-y-4">
-                {session?.user && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <UserMenu user={session.user} compact={true} />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p>User Profile</p>
-                    </TooltipContent>
-                  </Tooltip>
+                ) : (
+                  <div className="flex justify-center">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="icon"
+                          onClick={() => toast.error('Please sign in to create a new chat')}
+                          className="h-8 w-8"
+                        >
+                          <IconPlus className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <p>Sign in to create a new chat</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <ThemeToggle compact={true} />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>Toggle Theme</p>
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <ClearHistory clearChats={clearChats} compact={true} />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>Clear History</p>
-                  </TooltipContent>
-                </Tooltip>
               </div>
             )}
           </div>
           
-          {/* Footer */}
-          {isExpanded && <SidebarFooter />}
+          {/* Footer with theme toggle and clear history */}
+          {isExpanded ? (
+            <div className="border-t border-border mt-auto">
+              <SidebarFooter className="flex justify-end space-x-2">
+                <ThemeToggle />
+                <ClearHistory clearChats={clearChats} />
+              </SidebarFooter>
+            </div>
+          ) : (
+            <div className="mt-auto pb-4 pt-2 flex flex-col items-center space-y-4 border-t border-border">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <ThemeToggle compact={true} />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Toggle Theme</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <ClearHistory clearChats={clearChats} compact={true} />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Clear History</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -51,37 +51,35 @@ export function RepositorySelector() {
 
   return (
     <div className="space-y-4 py-4">
-      <div className="px-4 py-2 font-medium text-primary">
+      <div className="px-4 py-2 font-medium text-lg text-primary border-b border-border pb-2">
         Repository Management
       </div>
 
       {/* Active Repository */}
       {activeRepository && (
         <div className="px-4">
-          <div className="rounded-md bg-primary-foreground/10 p-3">
-            <div className="font-medium text-primary">Active Repository</div>
-            <div className="mt-2 text-sm">
-              <div className="font-medium">{activeRepository.service_name}</div>
-              <div className="text-xs text-muted-foreground break-all">
-                {activeRepository.url}
-              </div>
-              {activeRepository.description && (
-                <div className="mt-1 text-xs">{activeRepository.description}</div>
-              )}
-              {activeRepository.last_indexed && (
-                <div className="mt-1 text-xs text-muted-foreground">
-                  <span className="text-green-500">✓</span> Indexed: {activeRepository.last_indexed}
-                </div>
-              )}
+          <div className="mb-2 font-semibold text-primary">Active Repository</div>
+          <div className="rounded-md bg-primary-foreground/10 p-3 border border-border/50">
+            <div className="font-medium">{activeRepository.service_name}</div>
+            <div className="text-xs text-muted-foreground break-all">
+              {activeRepository.url}
             </div>
+            {activeRepository.description && (
+              <div className="mt-1 text-xs">{activeRepository.description}</div>
+            )}
+            {activeRepository.last_indexed && (
+              <div className="mt-1 text-xs text-muted-foreground">
+                <span className="text-green-500">✓</span> Indexed: {activeRepository.last_indexed}
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Repository List */}
-      <div className="px-4">
-        <div className="font-medium text-primary mb-2">Select Repository</div>
-        <div className="space-y-1">
+      <div className="px-4 mt-6">
+        <div className="font-semibold text-primary mb-2">Select Repository</div>
+        <div className="space-y-1 border border-border/50 rounded-md p-2">
           {repositories.map((repo) => (
             <Button
               key={repo.url}
@@ -102,7 +100,7 @@ export function RepositorySelector() {
       </div>
 
       {/* Add Repository Button */}
-      <div className="px-4">
+      <div className="px-4 mt-4">
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="w-full" variant="outline">
@@ -160,11 +158,11 @@ export function RepositorySelector() {
 
       {/* Ingestion Status */}
       {Object.keys(ingestingRepositories).length > 0 && (
-        <div className="px-4">
-          <div className="font-medium text-primary mb-2">Ingestion Status</div>
-          <div className="space-y-2">
+        <div className="px-4 mt-6">
+          <div className="font-semibold text-primary mb-2">Ingestion Status</div>
+          <div className="space-y-2 border border-border/50 rounded-md p-2">
             {Object.entries(ingestingRepositories).map(([url, status]) => (
-              <div key={url} className="rounded-md bg-amber-950/20 p-3">
+              <div key={url} className="rounded-md bg-amber-950/20 p-3 border border-amber-500/20">
                 <div className="font-medium text-amber-500">{status.serviceName}</div>
                 <div className="mt-1">
                   {status.indexed ? (

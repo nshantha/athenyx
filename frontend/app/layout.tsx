@@ -7,7 +7,7 @@ import { fontMono, fontSans } from '@/lib/fonts'
 import { cn } from '@/lib/utils'
 import { TailwindIndicator } from '@/components/tailwind-indicator'
 import { Providers } from '@/components/providers'
-import { Header } from '@/components/header'
+import { MainContent } from '@/components/main-content'
 import ClientSidebar from '@/components/client-sidebar'
 
 export const metadata: Metadata = {
@@ -50,12 +50,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <ClientSidebar />
             </div>
             
-            {/* Main content */}
-            <div className="flex flex-col flex-1">
-              {/* @ts-ignore */}
-              <Header />
-              <main className="flex flex-1 flex-col bg-muted/50">{children}</main>
-            </div>
+            {/* Main content with dynamic margin */}
+            <MainContent>{children}</MainContent>
           </div>
           <TailwindIndicator />
         </Providers>
@@ -63,3 +59,5 @@ export default function RootLayout({ children }: RootLayoutProps) {
     </html>
   )
 }
+
+
