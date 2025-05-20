@@ -17,6 +17,7 @@ export interface ChatPanelProps {
   setInput: (input: string) => void
   messages: Message[]
   onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void
+  sidebarAdjustment?: string
 }
 
 export function ChatPanel({
@@ -28,19 +29,24 @@ export function ChatPanel({
   input,
   setInput,
   messages,
-  onSubmit
+  onSubmit,
+  sidebarAdjustment = ''
 }: ChatPanelProps) {
   const { isExpanded } = useSidebar()
   
-  // Calculate left padding based on sidebar state
-  // When sidebar is expanded, add more padding to center the content
-  const sidebarWidth = isExpanded ? 'lg:pl-20 md:pl-16 pl-12 lg:pr-4 md:pr-2 pr-0' : 'pl-4'
+  // Apply sidebar adjustment directly as a style
+  const sidebarOffsetStyle = isExpanded 
+    ? { marginLeft: 'var(--sidebar-width, 0px)' } 
+    : {}
   
   return (
     <div className="fixed inset-x-0 bottom-0 bg-gradient-to-b from-muted/10 from-10% to-muted/30 to-50%">
       <ButtonScrollToBottom />
-      <div className="relative mx-auto w-full flex justify-center">
-        <div className={cn("w-full max-w-3xl px-4", sidebarWidth)}>
+      <div 
+        className="relative mx-auto w-full flex justify-center transition-all duration-300 ease-in-out"
+        style={sidebarOffsetStyle}
+      >
+        <div className="w-full max-w-3xl px-4">
           <div className="flex h-10 items-center justify-center">
             {isLoading ? (
               <Button

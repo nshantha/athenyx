@@ -425,3 +425,79 @@ export async function updateChat(
     return { error: 'Failed to update chat' }
   }
 }
+
+/**
+ * Search chats by content or title
+ * @param query The search query
+ * @returns Array of chats that match the search criteria
+ */
+export async function searchChats(query: string): Promise<Chat[]> {
+  if (!query?.trim()) {
+    return []
+  }
+  
+  try {
+    const cookieStore = cookies()
+    const supabase = createServerActionClient<Database>({
+      cookies: () => cookieStore
+    })
+    
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      console.error('No authenticated user found for search')
+      return []
+    }
+    
+    console.log(`Searching chats for user ${user.id} with query: ${query}`)
+    
+    // First search by title using ilike for partial matches
+    const { data: titleResults, error: titleError } = await supabase
+      .from('chats')
+      .select('id, user_id, payload')
+      .eq('user_id', user.id)
+      .ilike('payload->>title', `%${query}%`)
+      .order('payload->createdAt', { ascending: false })
+    
+    if (titleError) {
+      console.error('Error searching chats by title:', titleError)
+    }
+    
+    // Then search message content using a more generic approach
+    // Not as effective but works without custom functions
+    const { data: messageResults, error: messageError } = await supabase
+      .from('chats')
+      .select('id, user_id, payload')
+      .eq('user_id', user.id)
+      .filter('payload', 'cs', `{"messages":[{"content":"${query}"`)
+      .order('payload->createdAt', { ascending: false })
+    
+    if (messageError) {
+      console.error('Error searching chats by message content:', messageError)
+    }
+    
+    // Combine results, removing duplicates
+    const allResults = [...(titleResults || []), ...(messageResults || [])]
+    const uniqueResults = allResults.filter((chat, index, self) => 
+      index === self.findIndex(c => c.id === chat.id)
+    )
+    
+    console.log(`Search found ${uniqueResults.length} results`)
+    
+    // Format the results to return Chat objects
+    return uniqueResults.map(record => {
+      const payload = record.payload as Chat
+      
+      // Ensure each chat has a valid ID
+      if (!payload.id) {
+        payload.id = record.id
+      }
+      
+      return payload
+    })
+  } catch (error) {
+    console.error('Exception in searchChats:', error)
+    return []
+  }
+}

@@ -248,16 +248,18 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
   // Check if we should display the empty screen with centered prompt
   const isEmpty = messages.length === 0
   
-  // Calculate left padding based on sidebar state
-  // When sidebar is expanded, add more padding to center the content
-  const sidebarWidth = isExpanded ? 'lg:pl-20 md:pl-16 pl-12 lg:pr-4 md:pr-2 pr-0' : 'pl-4'
+  // Apply sidebar adjustment directly as a style
+  const sidebarOffsetStyle = isExpanded 
+    ? { marginLeft: 'var(--sidebar-width, 0px)' } 
+    : {}
   
   return (
     <div className="flex flex-col h-screen">
       {isEmpty ? (
         // Empty screen with centered prompt
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className={cn("w-full max-w-3xl px-4", sidebarWidth)}>
+        <div className="flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out"
+             style={sidebarOffsetStyle}>
+          <div className="w-full max-w-3xl px-4">
             <EmptyScreen setInput={setInput} />
             <div className="mt-8">
               <PromptForm
@@ -275,8 +277,9 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
       ) : (
         // Chat interface with messages and bottom prompt
         <>
-          <div className={cn('flex-1 overflow-y-auto pb-[120px] pt-4 md:pt-10', className)}>
-            <div className={cn("w-full max-w-3xl mx-auto px-4 md:px-8 lg:px-10", sidebarWidth)}>
+          <div className={cn('flex-1 overflow-y-auto pb-[120px] pt-4 md:pt-10 transition-all duration-300 ease-in-out', className)}
+               style={sidebarOffsetStyle}>
+            <div className="w-full max-w-3xl mx-auto px-4 md:px-8 lg:px-10">
               <ChatList messages={messages} />
               <ChatScrollAnchor trackVisibility={isLoading} />
             </div>

@@ -82,7 +82,7 @@ export function PromptForm({
           rows={1}
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder={isEmptyScreen ? "Ask me anything..." : "Send a message."}
+          placeholder={isEmptyScreen ? "Ask me anything..." : "Ask your knowledge base..."}
           spellCheck={false}
           className="min-h-[60px] w-full resize-none bg-transparent px-12 py-[1.3rem] focus-within:outline-none sm:text-sm"
         />
