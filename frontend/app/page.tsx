@@ -1,6 +1,7 @@
-import { redirect } from 'next/navigation'
+import { Chat } from '@/components/chat'
 import { auth } from '@/auth'
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 
 export const runtime = 'edge'
 
@@ -9,6 +10,12 @@ export default async function IndexPage() {
   const cookieStore = cookies()
   const session = await auth({ cookieStore })
   
-  // Simply redirect to the /chat route, which will handle all the logic
-  redirect('/chat')
+  if (!session?.user) {
+    redirect('/sign-in')
+  }
+  
+  // Instead of redirecting to /chat and automatically creating a new chat,
+  // we display the chat interface with the empty UI state and a temporary ID
+  // The ID 'new' will be replaced when the user sends their first message
+  return <Chat initialMessages={[]} id="new" />
 }

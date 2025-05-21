@@ -44,7 +44,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
 
   console.log('Fetching chat with ID:', params.id);
   const chat = await getChat(params.id)
-  console.log('Chat fetch result:', chat ? 'Chat found' : 'Chat not found', chat?.id);
+  console.log('Chat fetch result:', chat ? 'Chat found' : 'Chat not found', chat?.id, 'with messages:', chat?.messages?.length || 0);
 
   if (!chat) {
     console.log('No chat found with ID:', params.id);

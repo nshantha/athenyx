@@ -1,5 +1,6 @@
-import { createChat, getChats } from '@/app/actions'
+import { getChats } from '@/app/actions'
 import { auth } from '@/auth'
+import { Chat } from '@/components/chat'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -23,19 +24,7 @@ export default async function ChatPage() {
     return null
   }
   
-  // Only create a new chat if the user has no existing chats
-  const result = await createChat()
-  
-  if ('error' in result) {
-    console.error('Error creating chat:', result.error)
-  }
-  
-  // Redirect to the new chat or home if there was an error
-  if ('error' in result) {
-    redirect('/')
-  } else {
-    redirect(`/chat/${result.id}`)
-  }
-  
-  return null
+  // Instead of creating a new chat automatically, show an empty chat interface
+  // The chat will only be created when the user sends a message
+  return <Chat initialMessages={[]} id="new" />
 } 

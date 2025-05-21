@@ -19,7 +19,7 @@ function generateUUID() {
   });
 }
 
-export async function createChat(): Promise<{ id: string } | { error: string }> {
+export async function createChat(initialMessage?: { content: string; role: string }): Promise<{ id: string } | { error: string }> {
   try {
     const cookieStore = cookies()
     const supabase = createServerActionClient<Database>({
@@ -36,14 +36,17 @@ export async function createChat(): Promise<{ id: string } | { error: string }> 
     // Use UUID instead of nanoid
     const chatId = generateUUID()
     
+    // Prepare initial messages array
+    const initialMessages = initialMessage ? [initialMessage] : []
+    
     // Create a new chat
     const chat: Chat = {
       id: chatId,
-      title: 'New Chat',
+      title: initialMessage?.content ? initialMessage.content.substring(0, 30) + (initialMessage.content.length > 30 ? '...' : '') : 'New Chat',
       createdAt: new Date(),
       userId: user.id,
       path: `/chat/${chatId}`,
-      messages: []
+      messages: initialMessages
     }
     
     console.log('Creating new chat with ID:', chatId);
@@ -251,6 +254,12 @@ export async function getChat(id: string): Promise<Chat | null> {
     
     // Set path correctly
     chatData.path = `/chat/${data.id}`;
+    
+    // Make sure messages array exists
+    if (!chatData.messages) {
+      console.log('Chat has no messages array, initializing empty array');
+      chatData.messages = [];
+    }
     
     // Update the database with the corrected payload
     const updateResult = await supabase

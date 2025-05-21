@@ -21,18 +21,9 @@ export function LogoLink({ children }: LogoLinkProps) {
     setIsNavigating(true)
     
     try {
-      console.log('Logo clicked, current pathname:', pathname)
-      
-      // Force navigation to home page regardless of current path
+      // Always navigate to the root page which will handle redirection properly
+      // This ensures we don't create unnecessary chat entries
       router.push('/')
-      
-      // For good measure, also replace the current history entry
-      // This helps prevent history stack issues
-      setTimeout(() => {
-        router.replace('/')
-      }, 50)
-      
-      console.log('Navigation to home triggered')
     } catch (err) {
       console.error('Error navigating to home:', err)
     } finally {
