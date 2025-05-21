@@ -27,6 +27,19 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   
+  // Create a ref for the chat container
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  
+  // Function to scroll to the bottom of the chat
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      })
+    }
+  }
+  
   // Debug log for initialMessages
   useEffect(() => {
     console.log('Chat component initialized with:', { 
@@ -35,6 +48,14 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
       messageCount: initialMessages?.length || 0
     });
   }, [id, initialMessages]);
+  
+  // Add an effect to scroll to bottom when messages change
+  useEffect(() => {
+    // Only scroll if there are messages
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages]);
   
   // Get active repository from context
   const { activeRepository } = useRepository()
@@ -84,6 +105,9 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
     setMessages(prev => [...prev, userMessage])
     setIsLoading(true)
     
+    // Scroll to bottom when starting to send a message
+    setTimeout(scrollToBottom, 100)
+    
     try {
       // Prepare conversation history
       let conversationHistory = ''
@@ -122,6 +146,9 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
         
         setMessages(prev => [...prev, assistantMessage])
         
+        // Scroll to bottom again after adding assistant message
+        setTimeout(scrollToBottom, 100)
+        
         // Read the stream
         while (true) {
           const { done, value } = await reader.read()
@@ -158,6 +185,9 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
             }
             return newMessages
           })
+          
+          // Scroll to bottom periodically while receiving response
+          scrollToBottom()
         }
       } catch (apiError: any) {
         console.error('API error:', apiError)
@@ -187,6 +217,9 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
       }
       
       setIsLoading(false)
+      // Final scroll to bottom after completion
+      setTimeout(scrollToBottom, 100)
+      
     } catch (error) {
       console.error('Error sending message:', error)
       toast.error('Failed to send message')
@@ -209,6 +242,9 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
       }
       
       setMessages(prev => [...prev, errorMessage])
+      
+      // Scroll to bottom after error message
+      setTimeout(scrollToBottom, 100)
     }
   }
   
@@ -248,17 +284,11 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
   // Check if we should display the empty screen with centered prompt
   const isEmpty = messages.length === 0
   
-  // Apply sidebar adjustment directly as a style
-  const sidebarOffsetStyle = isExpanded 
-    ? { marginLeft: 'var(--sidebar-width, 0px)' } 
-    : {}
-  
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       {isEmpty ? (
         // Empty screen with centered prompt
-        <div className="flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out"
-             style={sidebarOffsetStyle}>
+        <div className="flex-1 flex flex-col items-center justify-center transition-all duration-300 ease-in-out">
           <div className="w-full max-w-3xl px-4">
             <EmptyScreen setInput={setInput} />
             <div className="mt-8">
@@ -277,8 +307,10 @@ export function Chat({ id = nanoid(), initialMessages = [], className }: ChatPro
       ) : (
         // Chat interface with messages and bottom prompt
         <>
-          <div className={cn('flex-1 overflow-y-auto pb-[120px] pt-4 md:pt-10 transition-all duration-300 ease-in-out', className)}
-               style={sidebarOffsetStyle}>
+          <div 
+            ref={chatContainerRef}
+            className="flex-1 overflow-y-auto pb-[120px] pt-4 md:pt-10 transition-all duration-300 ease-in-out"
+          >
             <div className="w-full max-w-3xl mx-auto px-4 md:px-8 lg:px-10">
               <ChatList messages={messages} />
               <ChatScrollAnchor trackVisibility={isLoading} />

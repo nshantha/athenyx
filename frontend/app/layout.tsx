@@ -44,7 +44,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       >
         <Toaster />
         <Providers>
-          <div className="flex min-h-screen">
+          <div className="flex min-h-screen flex-1 overflow-hidden">
             {/* Sidebar - now handled by the CollapsibleSidebar component */}
             <div className="hidden md:block">
               <ClientSidebar />

@@ -18,7 +18,14 @@ export function ChatScrollAnchor({ trackVisibility }: ChatScrollAnchorProps) {
   })
 
   React.useEffect(() => {
-    if (isAtBottom && trackVisibility && !inView) {
+    if (trackVisibility) {
+      // Always scroll to bottom when trackVisibility is true (e.g., when sending a message)
+      entry?.target.scrollIntoView({
+        block: 'start',
+        behavior: 'smooth'
+      })
+    } else if (isAtBottom) {
+      // Only scroll to bottom if we're already near the bottom
       entry?.target.scrollIntoView({
         block: 'start'
       })

@@ -133,10 +133,16 @@ export function CollapsibleSidebar() {
         onOpenChange={setSearchDialogOpen} 
       />
       
-      <div className={cn(
-        "group h-full transition-all duration-300 ease-in-out border-r bg-background fixed top-0 bottom-0 left-0 z-40",
-        isExpanded ? "w-72 lg:w-80" : "w-16"
-      )}>
+      <div 
+        className="group h-full transition-all duration-300 ease-in-out border-r bg-background fixed top-0 bottom-0 left-0 z-40 overflow-hidden"
+        style={{ width: isExpanded ? '20rem' : '4rem' }}
+      >
+        {/* Create a CSS variable for sidebar width that can be accessed by other components */}
+        <style jsx global>{`
+          :root {
+            --sidebar-width: ${isExpanded ? '20rem' : '4rem'};
+          }
+        `}</style>
         <div className="flex h-full flex-col">
           {/* Header with icons - fixed at top */}
           <div className="flex h-[52px] items-center justify-between px-2 py-2 shrink-0">

@@ -9,6 +9,9 @@ import { UserMenu } from '@/components/user-menu'
 import { cookies } from 'next/headers'
 import MobileSidebar from '@/components/mobile-sidebar'
 import { LogoLink } from '@/components/logo-link'
+import { CiSettings } from 'react-icons/ci'
+import { RiRobot2Line } from 'react-icons/ri'
+import { BsPlug } from 'react-icons/bs'
 
 export async function Header() {
   const cookieStore = cookies()
@@ -26,19 +29,33 @@ export async function Header() {
           <IconNextChat className="mr-2 hidden h-6 w-6 dark:block" />
           <span className="font-bold text-lg">Actuamind</span>
         </LogoLink>
-        
-        <div className="flex items-center ml-4">
-          <IconSeparator className="h-6 w-6 text-muted-foreground/50" />
-          {session?.user ? (
-            <UserMenu user={session.user} />
-          ) : (
-            <Button variant="link" asChild className="-ml-2">
-              <Link href="/sign-in">Login</Link>
-            </Button>
-          )}
-        </div>
       </div>
-      <div className="flex items-center justify-end space-x-2">
+      <div className="flex items-center justify-end">
+        {session?.user && (
+          <div className="flex items-center space-x-5">
+            <Link 
+              href="/workflow" 
+              className="text-foreground hover:text-primary transition-colors"
+              aria-label="Workflows"
+            >
+              <RiRobot2Line className="h-6 w-6" />
+            </Link>
+            <Link 
+              href="/integrations" 
+              className="text-foreground hover:text-primary transition-colors"
+              aria-label="Integrations"
+            >
+              <BsPlug className="h-6 w-6" />
+            </Link>
+            <span className="mx-3 text-muted-foreground/50">|</span>
+            <UserMenu user={session.user} />
+          </div>
+        )}
+        {!session?.user && (
+          <Button variant="link" asChild>
+            <Link href="/sign-in">Login</Link>
+          </Button>
+        )}
       </div>
     </header>
   )

@@ -34,18 +34,20 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const { isExpanded } = useSidebar()
   
-  // Apply sidebar adjustment directly as a style
-  const sidebarOffsetStyle = isExpanded 
-    ? { marginLeft: 'var(--sidebar-width, 0px)' } 
-    : {}
+  /**
+   * Get the effective sidebar width based on expanded state
+   */
+  const getSidebarWidth = () => {
+    return isExpanded ? '20rem' : '4rem';
+  };
   
   return (
-    <div className="fixed inset-x-0 bottom-0 bg-gradient-to-b from-muted/10 from-10% to-muted/30 to-50%">
+    <div 
+      className="fixed bottom-0 bg-gradient-to-b from-muted/10 from-10% to-muted/30 to-50% transition-all duration-300 ease-in-out"
+      style={{ left: 'var(--sidebar-width)', right: 0 }}
+    >
       <ButtonScrollToBottom />
-      <div 
-        className="relative mx-auto w-full flex justify-center transition-all duration-300 ease-in-out"
-        style={sidebarOffsetStyle}
-      >
+      <div className="relative mx-auto w-full flex justify-center">
         <div className="w-full max-w-3xl px-4">
           <div className="flex h-10 items-center justify-center">
             {isLoading ? (
