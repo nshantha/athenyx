@@ -134,7 +134,7 @@ export function CollapsibleSidebar() {
       />
       
       <div 
-        className="group h-full transition-all duration-300 ease-in-out border-r bg-background fixed top-0 bottom-0 left-0 z-40 overflow-hidden"
+        className="group h-full transition-all duration-300 ease-in-out border-r bg-background fixed top-0 bottom-0 left-0 z-40 overflow-hidden flex flex-col"
         style={{ width: isExpanded ? '20rem' : '4rem' }}
       >
         {/* Create a CSS variable for sidebar width that can be accessed by other components */}
@@ -143,19 +143,19 @@ export function CollapsibleSidebar() {
             --sidebar-width: ${isExpanded ? '20rem' : '4rem'};
           }
         `}</style>
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col"> {/* This inner flex-col might be redundant now */}
           {/* Header with icons - fixed at top */}
-          <div className="flex h-[52px] items-center justify-between px-2 py-2 shrink-0">
+          <div className="flex h-[56px] items-center justify-between px-3 py-2 shrink-0 border-b">
             {isExpanded ? (
               <>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1"> {/* Reduced gap */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={handleSearch}
-                        className="h-8 w-8"
+                        className="h-9 w-9" // Slightly larger button
                       >
                         <IconSearch className="h-4 w-4" />
                         <span className="sr-only">Search</span>
@@ -172,7 +172,7 @@ export function CollapsibleSidebar() {
                         variant="ghost" 
                         size="icon" 
                         onClick={handleNewChat}
-                        className="h-8 w-8"
+                        className="h-9 w-9" // Slightly larger button
                         disabled={isCreatingChat || !session?.user}
                       >
                         <IconPlus className="h-4 w-4" />
@@ -185,38 +185,47 @@ export function CollapsibleSidebar() {
                   </Tooltip>
                 </div>
                 
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={toggleSidebar} 
-                  className="h-8 w-8"
-                >
-                  <IconChevronLeft className="h-4 w-4" />
-                  <span className="sr-only">Collapse Sidebar</span>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={toggleSidebar} 
+                      className="h-9 w-9" // Slightly larger button
+                    >
+                      <IconChevronLeft className="h-4 w-4" />
+                      <span className="sr-only">Collapse Sidebar</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Collapse Sidebar</p>
+                  </TooltipContent>
+                </Tooltip>
               </>
             ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={toggleSidebar} 
-                    className="h-8 w-8 mx-auto"
-                  >
-                    <IconChevronRight className="h-4 w-4" />
-                    <span className="sr-only">Expand Sidebar</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p>Expand Sidebar</p>
-                </TooltipContent>
-              </Tooltip>
+              <div className="flex flex-col items-center w-full"> {/* Ensure button takes full width for centering */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={toggleSidebar} 
+                      className="h-9 w-9" // Slightly larger button
+                    >
+                      <IconChevronRight className="h-4 w-4" />
+                      <span className="sr-only">Expand Sidebar</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>Expand Sidebar</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             )}
           </div>
 
           {/* Middle content area - scrollable */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pb-4"> {/* Added pb-4 for bottom padding */}
             {/* Repository management sections */}
             {isExpanded ? (
               <>
@@ -224,13 +233,17 @@ export function CollapsibleSidebar() {
                 <RepositorySelector />
                 
                 {/* Chat list with separator */}
-                <div className="px-4 py-2 mt-4 border-t border-border">
-                  <div className="font-medium text-primary mb-2">Your chats</div>
-                  <SidebarList userId={session?.user?.id} />
+                <div className="mt-4 pt-4 border-t-2 border-border/60"> {/* Stronger border, more padding */}
+                  <div className="px-3 mb-2 text-sm font-semibold text-primary tracking-wider"> {/* Adjusted styling for "Your chats" header */}
+                    Your Chats
+                  </div>
+                  <div className="px-2"> {/* Added padding for the list itself */}
+                    <SidebarList userId={session?.user?.id} />
+                  </div>
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-center py-4 space-y-4">
+              <div className="flex flex-col items-center pt-3 space-y-3"> {/* Adjusted spacing */}
                 {/* Collapsed view items */}
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -238,7 +251,7 @@ export function CollapsibleSidebar() {
                       variant="ghost" 
                       size="icon" 
                       onClick={handleSearch}
-                      className="h-8 w-8 mx-auto mb-2"
+                      className="h-9 w-9" // Consistent button size
                     >
                       <IconSearch className="h-4 w-4" />
                       <span className="sr-only">Search</span>
@@ -253,13 +266,14 @@ export function CollapsibleSidebar() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button 
-                        variant="outline" 
-                        className="w-full justify-center px-0"
+                        variant="ghost" // Changed to ghost to be consistent with other icon buttons
+                        size="icon"    // Ensure it's an icon button
+                        className="h-9 w-9" // Consistent button size
                         onClick={handleNewChat}
                         disabled={isCreatingChat}
                       >
                         {isCreatingChat ? (
-                          <span className="animate-spin">⏳</span>
+                          <span className="animate-spin">⏳</span> // Consider using a Lucide icon for loading
                         ) : (
                           <IconPlus className="h-4 w-4" />
                         )}
@@ -270,58 +284,59 @@ export function CollapsibleSidebar() {
                     </TooltipContent>
                   </Tooltip>
                 ) : (
-                  <div className="flex justify-center">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="icon"
-                          onClick={() => toast.error('Please sign in to create a new chat')}
-                          className="h-8 w-8"
-                        >
-                          <IconPlus className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        <p>Sign in to create a new chat</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" // Changed to ghost
+                        size="icon"
+                        onClick={() => toast.error('Please sign in to create a new chat')}
+                        className="h-9 w-9" // Consistent button size
+                      >
+                        <IconPlus className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>Sign in to create a new chat</p>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             )}
           </div>
           
           {/* Footer with theme toggle and clear history */}
-          {isExpanded ? (
-            <div className="border-t border-border mt-auto">
-              <SidebarFooter className="flex justify-end space-x-2">
-                <ThemeToggle />
-                <ClearHistory clearChats={clearChats} />
+          <div className="mt-auto border-t border-border p-2"> {/* Standardized padding */}
+            {isExpanded ? (
+              <SidebarFooter className="flex items-center justify-between space-x-2"> {/* Use justify-between for better spacing */}
+                <div className="flex space-x-1"> {/* Grouped left items */}
+                  <ThemeToggle />
+                  <ClearHistory clearChats={clearChats} />
+                </div>
+                {/* UserMenu can go here if needed, or adjust spacing */}
               </SidebarFooter>
-            </div>
-          ) : (
-            <div className="mt-auto pb-4 pt-2 flex flex-col items-center space-y-4 border-t border-border">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <ThemeToggle compact={true} />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p>Toggle Theme</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <ClearHistory clearChats={clearChats} compact={true} />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p>Clear History</p>
-                </TooltipContent>
-              </Tooltip>
+            ) : (
+              <div className="flex flex-col items-center space-y-2 py-2"> {/* Adjusted spacing for compact footer */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <ThemeToggle compact={true} />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>Toggle Theme</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <ClearHistory clearChats={clearChats} compact={true} />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>Clear History</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
           )}
         </div>

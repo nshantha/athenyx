@@ -5,12 +5,11 @@ import { cn } from '@/lib/utils'
 import { HeaderClient } from '@/components/header-client'
 
 export function MainContent({ children }: { children: React.ReactNode }) {
-  const { isExpanded } = useSidebar()
+  // const { isExpanded } = useSidebar() // isExpanded is not directly used here anymore
   
-  // Calculate the proper margin based on sidebar state
-  const getContentMargin = () => {
-    return isExpanded ? '20rem' : '4rem';
-  };
+  // The marginLeft is now directly controlled by the --sidebar-width CSS variable,
+  // which is updated by the CollapsibleSidebar component.
+  // The transition-all class handles the smooth animation.
   
   return (
     <div 

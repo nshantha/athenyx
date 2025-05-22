@@ -47,7 +47,7 @@ export async function Header() {
             >
               <BsPlug className="h-6 w-6" />
             </Link>
-            <span className="mx-3 text-muted-foreground/50">|</span>
+            <span className="mx-3 text-border">|</span> {/* Changed to text-border for better theme consistency */}
             <UserMenu user={session.user} />
           </div>
         )}

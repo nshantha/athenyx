@@ -75,4 +75,65 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* General typography improvements */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-semibold text-foreground;
+  }
+
+  h1 { @apply text-3xl mb-4; }
+  h2 { @apply text-2xl mb-3; }
+  h3 { @apply text-xl mb-2; }
+  h4 { @apply text-lg mb-1; }
+
+  p {
+    @apply mb-4 leading-relaxed;
+  }
+
+  a {
+    @apply text-primary hover:underline;
+  }
+
+  ul, ol {
+    @apply list-inside mb-4 pl-4;
+  }
+  ul { @apply list-disc; }
+  ol { @apply list-decimal; }
+
+  li {
+    @apply mb-1;
+  }
+
+  /* Markdown specific styling for chat messages */
+  .markdown-content p:last-child,
+  .markdown-content ul:last-child,
+  .markdown-content ol:last-child {
+    @apply mb-0; /* Remove bottom margin from the last element in markdown block */
+  }
+
+  .markdown-content pre {
+    @apply bg-muted text-muted-foreground p-4 rounded-md overflow-x-auto my-4 font-mono text-sm;
+  }
+
+  .markdown-content code:not(pre code) {
+    @apply bg-muted text-muted-foreground font-mono text-sm px-1 py-0.5 rounded-sm;
+  }
+  
+  .markdown-content pre code {
+     @apply bg-transparent p-0 text-inherit; /* Reset for code inside pre */
+  }
+
+  .markdown-content blockquote {
+    @apply border-l-4 border-border pl-4 italic text-muted-foreground my-4;
+  }
+
+  .markdown-content table {
+    @apply w-full my-4 text-sm border-collapse border border-border;
+  }
+  .markdown-content th, .markdown-content td {
+    @apply border border-border px-2 py-1 text-left;
+  }
+  .markdown-content th {
+    @apply bg-muted font-semibold;
+  }
 }
